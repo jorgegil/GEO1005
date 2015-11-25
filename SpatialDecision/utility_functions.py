@@ -20,9 +20,9 @@
  *                                                                         *
  ***************************************************************************/
 """
-
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt4 import QtGui, QtCore
+#from PyQt4.QtCore import *
+#from PyQt4.QtGui import *
 from qgis.core import *
 
 from pyspatialite import dbapi2 as sqlite
@@ -32,23 +32,11 @@ import numpy as np
 import os.path
 import math
 import sys
-from itertools import izip_longest
+
 
 #
 # Layer functions
 #
-def getVectorLayers(geom='all', provider='all'):
-    """Return list of valid QgsVectorLayer in QgsMapLayerRegistry, with specific geometry type and/or data provider"""
-    layers_list = []
-    for layer in QgsMapLayerRegistry.instance().mapLayers().values():
-        add_layer = False
-        if layer.isValid() and layer.type() == QgsMapLayer.VectorLayer:
-            if layer.hasGeometryType() and (geom is 'all' or layer.geometryType() in geom):
-                if provider is 'all' or layer.dataProvider().name() in provider:
-                    add_layer = True
-        if add_layer:
-            layers_list.append(layer)
-    return layers_list
 
 
 def getLegendLayers(iface, geom='all', provider='all'):
@@ -69,6 +57,20 @@ def getCanvasLayers(iface, geom='all', provider='all'):
     """Return list of valid QgsVectorLayer in QgsMapCanvas, with specific geometry type and/or data provider"""
     layers_list = []
     for layer in iface.mapCanvas().layers():
+        add_layer = False
+        if layer.isValid() and layer.type() == QgsMapLayer.VectorLayer:
+            if layer.hasGeometryType() and (geom is 'all' or layer.geometryType() in geom):
+                if provider is 'all' or layer.dataProvider().name() in provider:
+                    add_layer = True
+        if add_layer:
+            layers_list.append(layer)
+    return layers_list
+
+
+def getRegistryLayers(geom='all', provider='all'):
+    """Return list of valid QgsVectorLayer in QgsMapLayerRegistry, with specific geometry type and/or data provider"""
+    layers_list = []
+    for layer in QgsMapLayerRegistry.instance().mapLayers().values():
         add_layer = False
         if layer.isValid() and layer.type() == QgsMapLayer.VectorLayer:
             if layer.hasGeometryType() and (geom is 'all' or layer.geometryType() in geom):
@@ -102,6 +104,11 @@ def getCanvasLayerByName(iface, name):
     return layer
 
 
+def getLayersListNames(layerslist):
+    layer_names = [layer.name() for layer in layerslist]
+    return layer_names
+
+
 def getLayerPath(layer):
     path = ''
     provider = layer.dataProvider()
@@ -113,11 +120,6 @@ def getLayerPath(layer):
         uri = provider.dataSourceUri()
         path = os.path.dirname(uri)
     return path
-
-
-def getLayersListNames(layerslist):
-    layer_names = [layer.name() for layer in layerslist]
-    return layer_names
 
 
 def reloadLayer(layer):
@@ -157,7 +159,8 @@ def getFieldNames(layer):
 def getNumericFields(layer, type='all'):
     fields = []
     if type == 'all':
-        types = (QVariant.Int, QVariant.LongLong, QVariant.Double, QVariant.UInt, QVariant.ULongLong)
+        types = (QtCore.QVariant.Int, QtCore.QVariant.LongLong, QtCore.QVariant.Double,
+                 QtCore.QVariant.UInt, QtCore.QVariant.ULongLong)
     else:
         types = (type)
     if layer and layer.dataProvider():
@@ -237,7 +240,7 @@ def addFields(layer, names, types):
 #
 # Feature functions
 #
-def getFeaturesListValues(layer, name, values=list):
+def getFeaturesByListValues(layer, name, values=list):
     features = {}
     if layer:
         if fieldExists(layer, name):
@@ -250,7 +253,7 @@ def getFeaturesListValues(layer, name, values=list):
     return features
 
 
-def getFeaturesRangeValues(layer, name, min, max):
+def getFeaturesByRangeValues(layer, name, min, max):
     features = {}
     if layer:
         if fieldExists(layer, name):
@@ -322,10 +325,59 @@ def getCanvasColour(iface):
     return colour
 
 
+def printCanvas(self, filename=''):
+    if not filename:
+        filename = '~/print_map.pdf'
+
+    # image size parameters
+    imageWidth_mm = 10000
+    imageHeight_mm = 10000
+    dpi = 300
+
+    map_settings = self.iface.mapCanvas().mapSettings()
+    c = QgsComposition(map_settings)
+    c.setPaperSize(imageWidth_mm, imageHeight_mm)
+    c.setPrintResolution(dpi)
+
+    x, y = 0, 0
+    w, h = c.paperWidth(), c.paperHeight()
+    composerMap = QgsComposerMap(c, x ,y, w, h)
+    composerMap.setBackgroundEnabled(True)
+    c.addItem(composerMap)
+
+    dpmm = dpi / 25.4
+    width = int(dpmm * c.paperWidth())
+    height = int(dpmm * c.paperHeight())
+
+    # create output image and initialize it
+    image = QtGui.QImage(QtCore.QSize(width, height), QtGui.QImage.Format_ARGB32)
+    image.setDotsPerMeterX(dpmm * 1000)
+    image.setDotsPerMeterY(dpmm * 1000)
+    imagePainter = QtGui.QPainter(image)
+
+    c.setPlotStyle(QgsComposition.Print)
+    c.renderPage( imagePainter, 0 )
+    imagePainter.end()
+
+    image.save(filename, "PDF")
+
 #
 # General functions
 #
-# Display an error message via Qt message box
+
+
+def getLastDir(self, tool_name=''):
+    path = ''
+    settings = QtCore.QSettings(tool_name,"")
+    settings.value("lastUsedDir",str(""))
+    return path
+
+
+def setLastDir(self, filename, tool_name=''):
+    path = QtCore.QFileInfo(filename).absolutePath()
+    settings = QtCore.QSettings(tool_name,"")
+    settings.setValue("lastUsedDir", str(unicode(path)))
+
 
 # check if a text string is of numeric type
 def isNumeric(txt):
@@ -359,25 +411,6 @@ def convertNumeric(txt):
     return value
 
 
-# round number based on simple rules of thumb
-# for suggestion on the best number to round
-# some principles found here: http://www.tc3.edu/instruct/sbrown/stat/rounding.htm
-def roundNumber(num):
-    if isNumeric(num):
-        if isinstance(num, basestring):
-            convertNumeric(num)
-        rounded = num
-        if num > 100 or num < -100:
-            rounded = round(num,1)
-        elif (1 < num <= 100) or (-1 > num >= -100):
-            rounded = round(num,2)
-        elif (0.01 < num <= 1) or (-0.01 > num >= -1):
-            rounded = round(num,4)
-        else:
-            rounded = round(num,6)
-        return rounded
-
-
 def truncateNumber(num,digits=9):
     if isNumeric(num):
         truncated = str(num)
@@ -387,45 +420,8 @@ def truncateNumber(num,digits=9):
         return convertNumeric(truncated)
 
 
-def calcGini(values):
-    """
-    Calculate gini coefficient, using transformed formula, like R code in 'ineq'
-    :param values: list of numeric values
-    :return: gini coefficient
-    """
-    S = sorted(values)
-    N = len(values)
-    T = sum(values)
-    P = sum(xi * (i+1) for i,xi in enumerate(S))
-    G = 2.0 * P/(N * T)
-    gini = G - 1 - (1./N)
-    return gini
-
-
-def calcBins(values, minbins=3, maxbins=128):
-    """Calculates the best number of bins for the given values
-    Uses the Freedman-Diaconis modification of Scott's rule.
-    """
-    nbins = 1
-    # prepare data
-    if not isinstance(values, np.ndarray):
-        values = np.array(values)
-    # calculate stats
-    range = np.nanmax(values)-np.nanmin(values)
-    IQR = np.percentile(values,75)-np.percentile(values,25)
-    # calculate bin size
-    bin_size = 2 * IQR * np.size(values)**(-1.0/3)
-    # calculate number of bins
-    if bin_size > 0:
-        nbins = range / bin_size
-
-    nbins = max(minbins, min(maxbins, int(nbins)))
-
-    return nbins
-
-
 #------------------------------
-# Creation functions
+# Layer creation functions
 #------------------------------
 def createTempLayer(name, srid, attributes, types, values, coords):
     # create an instance of a memory vector layer
@@ -453,7 +449,7 @@ def createTempLayer(name, srid, attributes, types, values, coords):
             if type == 'Point':
                 feat.setGeometry(QgsGeometry.fromPoint([QgsPoint(float(val[coords[0]]),float(val[coords[1]]))]))
             elif type == 'LineString':
-                feat.setGeometry(QgsGeometry.fromPolyline([QgsPoint(float(val[coords[0]]),float(val[coords[1]])), \
+                feat.setGeometry(QgsGeometry.fromPolyline([QgsPoint(float(val[coords[0]]),float(val[coords[1]])),
                                                            QgsPoint(float(val[coords[2]]),float(val[coords[3]]))]))
         except:
             pass
@@ -489,48 +485,6 @@ def createIndex(layer):
         return None
 
 
-# Function to build a topology from line layer
-def buildTopology(self, axial, unlinks, links):
-    index = createIndex(axial)
-    axial_links = []
-    unlinks_list = []
-    links_list = []
-    # get unlinks pairs
-    if unlinks:
-        features = unlinks.getFeatures(QgsFeatureRequest().setSubsetOfAttributes(['line1','line2'],unlinks.pendingFields()))
-        for feature in features:
-            unlinks_list.append((feature.attribute('line1'),feature.attribute('line2')))
-    # get links pairs
-    if links:
-        features = links.getFeatures(QgsFeatureRequest().setSubsetOfAttributes(['line1','line2'],links.pendingFields()))
-        for feature in features:
-            links_list.append((feature.attribute('line1'),feature.attribute('line2')))
-    # get axial intersections
-    features = axial.getFeatures(QgsFeatureRequest().setSubsetOfAttributes([]))
-    for feature in features:
-        geom = feature.geometry()
-        id = feature.id()
-        box = geom.boundingBox()
-        request = QgsFeatureRequest()
-        if index:
-            # should be faster to retrieve from index (if available)
-            ints = index.intersects(box)
-            request.setFilterFids(ints)
-        else:
-            # can retrieve objects using bounding box
-            request.setFilterRect(box)
-        request.setSubsetOfAttributes([])
-        targets = axial.getFeatures(request)
-        for target in targets:
-            geom_b = target.geometry()
-            id_b = target.id()
-            if not id_b == id and geom.intersects(geom_b):
-                # check if in the unlinks
-                if (id,id_b) not in unlinks_list and (id,id_b) not in unlinks_list:
-                    axial_links.append((id,id_b))
-    return axial_links
-
-
 #------------------------------
 # General database functions
 #------------------------------
@@ -546,19 +500,13 @@ def getDBLayerConnection(layer):
         connection_object = None
     return connection_object
 
-
-def testSameDatabase(layers):
-    #check if the layers are in the same database
-    if len(layers) > 1:
-        database = []
-        for layer in layers:
-            database.append(QgsDataSourceURI(layer.dataProvider().dataSourceUri()).database())
-        if len(list(set(database))) > 1:
-            return False
-        else:
-            return True
-    return True
-
+def getSpatialiteConnection(path):
+    try:
+        connection=sqlite.connect(path)
+    except sqlite.OperationalError, error:
+        #pop_up_error("Unable to connect to selected database: \n %s" % error)
+        connection = None
+    return connection
 
 def getDBLayerTableName(layer):
     uri = QgsDataSourceURI(layer.dataProvider().dataSourceUri())
@@ -575,7 +523,6 @@ def getDBLayerPrimaryKey(layer):
     return uri.key()
 
 
-
 #---------------------------------------------
 # Shape file specific functions
 #---------------------------------------------
@@ -585,7 +532,7 @@ def listShapeFolders():
     res['idx'] = 0
     res['name'] = []
     res['path'] = []
-    layers = getVectorLayers('all', 'ogr')
+    layers = getRegistryLayers('all', 'ogr')
     for layer in layers:
         provider = layer.dataProvider()
         if layer.storageType() == 'ESRI Shapefile':
@@ -637,53 +584,8 @@ def copyLayerToShapeFile(layer, path, name):
     return vlayer
 
 
-def createShapeFileFullLayer(path, name, srid, attributes, types, values, coords):
-    # create new layer with given attributes
-    filename = path+"/"+name+".shp"
-    #create the required fields
-    fields = QgsFields()
-    for i, attr in enumerate(attributes):
-        fields.append(QgsField(attr, types[i]))
-    # create an instance of vector file writer, which will create the vector file.
-    writer = None
-    if len(coords) == 2:
-        type = 'point'
-        writer = QgsVectorFileWriter(filename, "CP1250", fields, QGis.WKBPoint, srid, "ESRI Shapefile")
-    elif len(coords) == 4:
-        type = 'line'
-        writer = QgsVectorFileWriter(filename, "CP1250", fields, QGis.WKBLineString, srid, "ESRI Shapefile")
-    if writer.hasError() != QgsVectorFileWriter.NoError:
-        print "Error when creating shapefile: ", writer.hasError()
-        return None
-    # add features by iterating the values
-    feat = QgsFeature()
-    for i, val in enumerate(values):
-        # add geometry
-        try:
-            if type == 'point':
-                feat.setGeometry(QgsGeometry.fromPoint([QgsPoint(float(val[coords[0]]),float(val[coords[1]]))]))
-            elif type == 'line':
-                feat.setGeometry(QgsGeometry.fromPolyline([QgsPoint(float(val[coords[0]]),float(val[coords[1]])), \
-                                                           QgsPoint(float(val[coords[2]]),float(val[coords[3]]))]))
-        except: pass
-        # add attributes
-        attrs = []
-        for j, attr in enumerate(attributes):
-            attrs.append(val[j])
-        feat.setAttributes(attrs)
-        writer.addFeature(feat)
-    # delete the writer to flush features to disk (optional)
-    del writer
-    # open the newly created file
-    vlayer = QgsVectorLayer(filename, name, "ogr")
-    if not vlayer.isValid():
-        print "Layer failed to load!"
-        return None
-    return vlayer
-
-
 def createShapeFileLayer(path, name, srid, attributes, types, geometrytype):
-    # create new layer with given attributes
+    # create new empty layer with given attributes
     # todo: created table has no attributes. not used
     # use createShapeFileFullLayer instead
     filename = path+"/"+name+".shp"
@@ -712,49 +614,53 @@ def createShapeFileLayer(path, name, srid, attributes, types, geometrytype):
     return vlayer
 
 
-def insertShapeFileValues(layer, attributes, values, coords):
-    # get the geometry type
-    # todo: not working yet. attribute ids must match those from table.
-    # use createShapeFileFullLayer instead
-    res = False
-    if layer:
-        geom_type = layer.geometryType()
-        provider = layer.dataProvider()
-        caps = provider.capabilities()
-        if caps & QgsVectorDataProvider.AddFeatures:
-            # add features by iterating the values
-            features = []
-            for val in values:
-                feat = QgsFeature()
-                # add geometry
-                try:
-                    if geom_type in (0,3):
-                        feat.setGeometry(QgsGeometry.fromPoint([QgsPoint(float(val[coords[0]]),float(val[coords[1]]))]))
-                    elif geom_type in (1,4):
-                        feat.setGeometry(QgsGeometry.fromPolyline([QgsPoint(float(val[coords[0]]),float(val[coords[1]])), \
-                                                                   QgsPoint(float(val[coords[2]]),float(val[coords[3]]))]))
-                except:
-                    pass
-                # add attributes
-                for i, x in enumerate(val):
-                    feat.addAttribute(i, x)
-                features.append(feat)
-            res, outFeats = provider.addFeatures(features)
-            layer.updateFields()
-        else:
-            res = False
-    else:
-        res = False
-    return res
-
-
-def insertShapeFileGeometry(path, name, srid, geometry, attributes=None, values=None):
-    # newfeature: function to insert new geometry features (and attributes) in shapefile
-    pass
+def createShapeFileFullLayer(path, name, srid, attributes, types, values, coords):
+    # create new layer with given attributes and data, including geometry (point and lines only)
+    filename = path+"/"+name+".shp"
+    #create the required fields
+    fields = QgsFields()
+    for i, attr in enumerate(attributes):
+        fields.append(QgsField(attr, types[i]))
+    # create an instance of vector file writer, which will create the vector file.
+    writer = None
+    if len(coords) == 2:
+        type = 'point'
+        writer = QgsVectorFileWriter(filename, "CP1250", fields, QGis.WKBPoint, srid, "ESRI Shapefile")
+    elif len(coords) == 4:
+        type = 'line'
+        writer = QgsVectorFileWriter(filename, "CP1250", fields, QGis.WKBLineString, srid, "ESRI Shapefile")
+    if writer.hasError() != QgsVectorFileWriter.NoError:
+        print "Error when creating shapefile: ", writer.hasError()
+        return None
+    # add features by iterating the values
+    feat = QgsFeature()
+    for i, val in enumerate(values):
+        # add geometry
+        try:
+            if type == 'point':
+                feat.setGeometry(QgsGeometry.fromPoint([QgsPoint(float(val[coords[0]]),float(val[coords[1]]))]))
+            elif type == 'line':
+                feat.setGeometry(QgsGeometry.fromPolyline([QgsPoint(float(val[coords[0]]),float(val[coords[1]])),
+                                                           QgsPoint(float(val[coords[2]]),float(val[coords[3]]))]))
+        except: pass
+        # add attributes
+        attrs = []
+        for j, attr in enumerate(attributes):
+            attrs.append(val[j])
+        feat.setAttributes(attrs)
+        writer.addFeature(feat)
+    # delete the writer to flush features to disk (optional)
+    del writer
+    # open the newly created file
+    vlayer = QgsVectorLayer(filename, name, "ogr")
+    if not vlayer.isValid():
+        print "Layer failed to load!"
+        return None
+    return vlayer
 
 
 def addShapeFileAttributes(layer, attributes, types, values):
-    # add attributes to the layer
+    # add attributes to an existing layer
     attributes_pos = dict()
     res = False
     if layer:
@@ -794,462 +700,3 @@ def addShapeFileAttributes(layer, attributes, types, values):
                 layer.updateFields()
     return res
 
-
-#---------------------------------------------
-# PostGIS database specific functions
-#---------------------------------------------
-# postgis geometry types
-# 1 point; 2 line; 3 polygon; 4 multipoint; 5 multiline; 6 multipolygon
-
-def listPostgisConnections():
-    """ Retrieve a list of PostgreSQL connection names
-    :return: connections - list of strings
-    """
-    settings = QSettings()
-    settings.beginGroup('/PostgreSQL/connections')
-    connections = [unicode(item) for item in settings.childGroups()]
-    return connections
-
-
-def getPostgisSelectedConnection():
-    """
-
-    :return:
-    """
-    #try to select directly the last opened dataBase
-    try:
-        settings = QSettings()
-        last_db = settings.value(u'/PostgreSQL/connections/selected')
-    except:
-        last_db = ''
-    return last_db
-
-
-def getPostgisConnectionSettings():
-    """Return all PostGIS connection settings stored in QGIS
-    :return: connection dict() with name and other settings
-    """
-    con_settings = []
-    settings = QSettings()
-    settings.beginGroup('/PostgreSQL/connections')
-    for item in settings.childGroups():
-        con = dict()
-        con['name'] = unicode(item)
-        con['host'] = unicode(settings.value(u'%s/host' % unicode(item)))
-        con['port'] = unicode(settings.value(u'%s/port' % unicode(item)))
-        con['database'] = unicode(settings.value(u'%s/database' % unicode(item)))
-        con['username'] = unicode(settings.value(u'%s/username' % unicode(item)))
-        con['password'] = unicode(settings.value(u'%s/password' % unicode(item)))
-        con_settings.append(con)
-    settings.endGroup()
-    if len(con_settings) < 1:
-        con_settings = None
-    return con_settings
-
-
-def createPostgisConnectionSetting(name, connection=None):
-    """
-
-    :param name:
-    :param connection:
-    :return:
-    """
-    settings=QSettings()
-    settings.beginGroup('/PostgreSQL/connections')
-    if connection and isinstance(connection, dict):
-        if 'host' in connection:
-            settings.setValue(u'%s/host' % name,u'%s' % connection['host'])
-        if 'port' in connection:
-            settings.setValue(u'%s/port' % name,u'%s' % connection['port'])
-        if 'dbname' in connection:
-            settings.setValue(u'%s/database' % name,u'%s' % connection['dbname'])
-        if 'user' in connection:
-            settings.setValue(u'%s/saveUsername' % name,u'%s' % "true")
-            settings.setValue(u'%s/username' % name,u'%s' % connection['user'])
-        if 'password' in connection:
-            settings.setValue(u'%s/savePassword' % name,u'%s' % "true")
-            settings.setValue(u'%s/password' % name,u'%s' % connection['password'])
-    settings.endGroup()
-
-
-def getPostgisConnection(name):
-    """
-
-    :param name:
-    :return:
-    """
-    con_str = getPostgisConnectionString(name)
-    try:
-        connection=pgsql.connect(con_str)
-    except pgsql.Error, e:
-        print e.pgerror
-        connection = None
-    return connection
-
-
-def getPostgisConnectionString(name):
-    """
-
-    :param name:
-    :return:
-    """
-    connection = ''
-    settings = QSettings()
-    settings.beginGroup('/PostgreSQL/connections/%s'%name)
-    for item in settings.allKeys():
-        if item in ('host','port','password'):
-            connection += "%s='%s' " % (item, settings.value(item))
-        elif item == 'database':
-            connection += "dbname='%s' " % settings.value(item)
-        elif item == 'username':
-            connection += "user='%s' " % settings.value(item)
-    return connection
-
-
-def executePostgisQuery(connection, query, params='',commit=False):
-    """Execute query (string) with given parameters (tuple)
-    (optionally perform commit to save Db)
-    :return: result set [header,data] or [error] error
-    """
-    query = unicode(query)
-    header = []
-    data = []
-    error = ''
-    cursor = connection.cursor()
-    try:
-        cursor.execute(query, params)
-        if cursor.description is not None:
-            header = [item[0] for item in cursor.description]
-            data = cursor.fetchall()
-        if commit:
-            connection.commit()
-    except pgsql.Error, e:
-        error = e.pgerror
-        connection.rollback()
-    cursor.close()
-    #return the result even if empty
-    return header, data, error
-
-
-def listPostgisSchemas(connection):
-    schemas = []
-    query = """SELECT schema_name from information_schema.schemata;"""
-    header, data, error = executePostgisQuery(connection, query)
-    if data:
-        # only extract user schemas
-        for schema in data:
-            if schema[0] not in ('topology', 'information_schema') and schema[0][:3] != 'pg_':
-                schemas.append(schema[0])
-    return schemas
-
-
-def getPostgisConnectionInfo(layer):
-    info = dict()
-    if layer:
-        provider = layer.dataProvider()
-        if provider.name() == 'postgres':
-            uri = QgsDataSourceURI(provider.dataSourceUri())
-            info['host'] = uri.host()
-            info['port'] = uri.port()
-            info['dbname'] = uri.database()
-            info['user'] = uri.username()
-            info['password'] = uri.password()
-            connection_settings = getPostgisConnectionSettings()
-            for connection in connection_settings:
-                if connection['database'] == info['dbname']:
-                    info['name'] = connection['name']
-                    break
-    return info
-
-
-def getPostgisLayerInfo(layer):
-    info = dict()
-    if layer:
-        provider = layer.dataProvider()
-        if provider.name() == 'postgres':
-            uri = QgsDataSourceURI(provider.dataSourceUri())
-            info['database'] = uri.database()
-            info['schema'] = uri.schema()
-            info['table'] = uri.table()
-            info['key'] = uri.keyColumn()
-            info['geom'] = uri.geometryColumn()
-            info['geomtype'] = uri.wkbType()
-            info['srid'] = uri.srid()
-            info['filter'] = uri.sql()
-            connection_settings = getPostgisConnectionSettings()
-            for connection in connection_settings:
-                if connection['database'] == info['database']:
-                    info['connection'] = connection['name']
-                    break
-    return info
-
-
-def listPostgisGeomTables(connection):
-    """query to read information about tables from the database
-    each value returned is an element in the data list"""
-    tables = []
-    query = """SELECT * FROM geometry_columns ORDER BY lower(f_table_name)"""
-    header, data, error = executePostgisQuery(connection, query)
-    #extract information from query
-    #info per table (array): name (0),geometry_column (1), geometry_column_type (2),
-    # geometry_dimension (3), srid (4), spatial_index_enabled (5)
-    if header != [] and data != []:
-        tables = data
-    #return the result even if empty
-    return tables
-
-
-def listPostgisColumns(connection, schema, name):
-    '''query to extract the names and data types of the columns in a table of the database
-    '''
-    columns = {}
-    query = """SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = '%s' AND table_name = '%s';""" % (schema, name)
-    header, data, error = executePostgisQuery(connection, query)
-    if data:
-        for col in data:
-            columns[col[0]] = col[1]
-    #return the result even if empty
-    return columns
-
-
-def loadPostgisTable(connection, name, schema, table):
-    """Load table (spatial or non-spatial) in QGIS
-    """
-    uri = QgsDataSourceURI()
-    dsn = None
-    for con in getPostgisConnectionSettings():
-        if con['name'] == name:
-            dsn = con
-    if dsn:
-        uri.setConnection(dsn['host'], dsn['port'], dsn['database'], dsn['username'], dsn['password'])
-        geometry = getPostgisGeometryColumn(connection, schema, table)
-        if geometry:
-            uri.setDataSource("%s" % schema, "%s" % table, "%s" % geometry)
-            layer=QgsVectorLayer(uri, "%s" % table, 'postgres')
-            #add layer to canvas
-            if layer.isValid():
-                QgsMapLayerRegistry.instance().addMapLayer(layer)
-            else:
-                # newfeature: write error message?
-                return False
-        else:
-            return False
-    else:
-        return False
-    return True
-
-
-def getPostgisLayer(connection, name, schema, table):
-    """Load table in QGIS"""
-    uri = QgsDataSourceURI()
-    dsn = None
-    for con in getPostgisConnectionSettings():
-        if con['name'] == name:
-            dsn = con
-            break
-    if dsn:
-        uri.setConnection(dsn['host'], dsn['port'], dsn['database'], dsn['username'], dsn['password'])
-        query = """SELECT f_geometry_column FROM geometry_columns WHERE f_table_schema = '%s' AND f_table_name = '%s'""" % (schema, table)
-        header, data, error = executePostgisQuery(connection, query)
-        if data != []:
-            geometry = data[0][0]
-            uri.setDataSource("%s" % schema, "%s" % table, "%s" % geometry)
-            layer = QgsVectorLayer(uri.uri(), "%s" % table, 'postgres')
-        else:
-            layer = None
-    else:
-        layer = None
-    return layer
-
-
-def getPostgisGeometryColumn(connection, schema, table):
-    geomname = ''
-    query = """SELECT f_geometry_column FROM geometry_columns WHERE f_table_schema = '%s' AND f_table_name = '%s'""" % (schema, table)
-    header, data, error = executePostgisQuery(connection, query)
-    if data:
-        geomname = data[0][0]
-    return geomname
-
-
-def createPostgisSpatialIndex(connection, schema, table, geomname):
-    # create a spatial index if not present, it makes subsequent queries much faster
-    index = table.lower().replace(" ","_")
-    query = """CREATE INDEX %s_gidx ON "%s"."%s" USING GIST ("%s")""" % (index, schema, table, geomname)
-    try:
-        header, data, error = executePostgisQuery(connection, query)
-    except:
-        pass
-    return
-
-
-def testPostgisTableExists(connection, schema, name):
-    '''
-    :param connection:
-    :param schema:
-    :param name:
-    :return:
-    '''
-    query = """SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema = '%s' AND table_name = '%s' """ % (schema, name)
-    header, data, error = executePostgisQuery(connection, query)
-    if data:
-        return True
-    return False
-
-
-def createPostgisTable(connection, schema, name, srid, attributes, types, geometrytype):
-    res = True
-    #Drop table
-    header, data, error = executePostgisQuery(connection,"""DROP TABLE IF EXISTS "%s"."%s" CASCADE """ % (schema, name))
-    # Get the fields
-    fields = []
-    for i, type in enumerate(types):
-        field_type = ''
-        if type in (QVariant.Char,QVariant.String): # field type is TEXT
-            field_type = 'character varying'
-        elif type in (QVariant.Bool,QVariant.Int,QVariant.LongLong,QVariant.UInt,QVariant.ULongLong): # field type is INTEGER
-            field_type = 'integer'
-        elif type == QVariant.Double: # field type is DOUBLE
-            field_type = 'double precision'
-        fields.append('"%s" %s'% (attributes[i],field_type))
-    # Get the geometry
-    geometry = False
-    if geometrytype != '':
-        if 'point' in geometrytype.lower():
-            geometry = 'MULTIPOINT'
-        elif 'line' in geometrytype.lower():
-            geometry = 'MULTILINESTRING'
-        elif 'polygon' in geometrytype.lower():
-            geometry = 'MULTIPOLYGON'
-    #Create new table
-    fields = ','.join(fields)
-    if len(fields) > 0:
-        fields=', %s' % fields
-    header, data, error = executePostgisQuery(connection,"""CREATE TABLE "%s"."%s" ( sid SERIAL NOT NULL PRIMARY KEY %s ) """ % (schema, name, fields))
-    if error:
-        res = False
-    else:
-        #Add the geometry column:
-        if geometry:
-            header, data, error = executePostgisQuery(connection,"""ALTER TABLE "%s"."%s" ADD COLUMN geom geometry('%s', %s) """ % (schema, name, geometry, srid))
-            idx_name = name.lower().replace(" ","_")
-            header,data, error = executePostgisQuery(connection,"""CREATE INDEX %s_gix ON "%s"."%s" USING GIST (geom) """ % (idx_name, schema, name))
-        if error:
-            res = False
-    if res:
-        #Commit changes to connection:
-        connection.commit()
-    return res
-
-
-def insertPostgisValues(connection, schema, name, attributes, values, coords=None):
-    res = False
-    # get table srid and geometry column info
-    query = """SELECT f_geometry_column,  type, srid FROM geometry_columns WHERE f_table_schema = '%s' AND f_table_name = '%s'""" % (schema, name)
-    header, data, error = executePostgisQuery(connection, query)
-    if data:
-        geometry_attr = data[0][0]
-        geometry_type = data[0][1]
-        srid = data[0][2]
-    else:
-        res = False
-
-    # iterate through values to populate geometry and attributes
-    if values:
-        res = True
-        if geometry_type in ('POINT','MULTIPOINT') and len(coords) == 2:
-            for val in values:
-                WKT = "POINT(%s %s)" % (val[coords[0]],val[coords[1]])
-                geometry_values = "ST_Multi(ST_GeomFromText('%s',%s))" % (WKT, srid)
-                #Create line in DB table
-                attr_values = ','.join(tuple([unicode(value) for value in val]))
-                query = """INSERT INTO "%s"."%s" ("%s","%s") VALUES (%s,%s)""" % (schema, name, geometry_attr, '","'.join(attributes), geometry_values, attr_values)
-                header, data, error = executePostgisQuery(connection, query, commit=False)
-                if error:
-                    res = False
-                    break
-        elif geometry_type in ('LINESTRING','MULTILINESTRING') and len(coords) == 4:
-            for val in values:
-                WKT = "LINESTRING(%s %s, %s %s)" % (val[coords[0]],val[coords[1]],val[coords[2]],val[coords[3]])
-                geometry_values = "ST_Multi(ST_GeomFromText('%s',%s))" % (WKT, srid)
-                attr_values = ','.join(tuple([unicode(value) for value in val]))
-                query = """INSERT INTO "%s"."%s" ("%s","%s") VALUES (%s,%s)""" % (schema, name, geometry_attr, '","'.join(attributes), geometry_values, attr_values)
-                header, data, error = executePostgisQuery(connection, query, commit=False)
-                if error:
-                    res = False
-                    break
-        else:
-            for val in values:
-                attr_values = ','.join(tuple([unicode(value) for value in val]))
-                query = """INSERT INTO "%s"."%s" ("%s") VALUES (%s)""" % (schema, name, '","'.join(attributes), attr_values)
-                header, data, error = executePostgisQuery(connection, query, commit=False)
-                if error:
-                    res = False
-                    break
-    else:
-        res = False
-    if res:
-        #Commit changes to connection:
-        connection.commit()
-    return res
-
-
-def addPostgisColumns(connection, schema, name, columns, types):
-    # add new columns to the layer
-    res = False
-    fields = listPostgisColumns(connection, schema, name)
-    for i, attr in enumerate(columns):
-        #add new field if it doesn't exist
-        if attr not in fields.keys():
-            res = True
-            field_type = ''
-            if types[i] in (QVariant.Char,QVariant.String): # field type is TEXT
-                field_type = 'character varying'
-            elif types[i] in (QVariant.Bool,QVariant.Int,QVariant.LongLong,QVariant.UInt,QVariant.ULongLong): # field type is INTEGER
-                field_type = 'integer'
-            elif types[i] == QVariant.Double: # field type is DOUBLE
-                field_type = 'double precision'
-            if field_type != '':
-                query = """ALTER TABLE "%s"."%s" ADD COLUMN "%s" %s""" % (schema, name, attr, field_type)
-                header, data, error = executePostgisQuery(connection, query)
-                if error:
-                    res = False
-                    break
-    #Commit changes to connection:
-    connection.commit()
-    return res
-
-
-def addPostgisAttributes(connection, schema, name, id, attributes, types, values):
-    # add attributes with values to the layer
-    res = addPostgisColumns(connection, schema, name, attributes, types)
-    # update attribute values iterating over values
-    if res:
-        # identify attributes to update
-        fields = listPostgisColumns(connection, schema, name)
-        attr_index = {}
-        attr_id = 0
-        for j, attr in enumerate(attributes):
-            if attr in fields.keys() and attr != id:
-                attr_index[attr] = j
-            elif attr == id:
-                attr_id = j
-        # get values for attributes
-        for val in values:
-            new_values = []
-            for attr in attr_index.iterkeys():
-                # add quotes if inserting a text value
-                if types[attr_index[attr]] in (QVariant.Char,QVariant.String):
-                    new_values.append(""" "%s" = '%s'""" % (attr,val[attr_index[attr]]))
-                else:
-                    new_values.append(""" "%s" = %s""" % (attr,val[attr_index[attr]]))
-            if len(new_values) > 0:
-                query = """UPDATE "%s"."%s" SET %s WHERE "%s" = %s""" % (schema, name, ', '.join(new_values), id, val[attr_id])
-                header, data, error = executePostgisQuery(connection,query)
-                if error:
-                    res = False
-                    break
-        if res:
-            connection.commit()
-        else:
-            connection.rollback()
-    return res

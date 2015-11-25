@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>232</width>
-    <height>141</height>
+    <width>342</width>
+    <height>509</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,12 +16,159 @@
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
-     <widget class="QLabel" name="label">
-      <property name="text">
-       <string>Replace this QLabel
-with the desired
-plugin content.</string>
+     <widget class="QTabWidget" name="sampleWidgets">
+      <property name="currentIndex">
+       <number>0</number>
       </property>
+      <widget class="QWidget" name="dataTab">
+       <attribute name="title">
+        <string>data</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,5">
+        <item>
+         <layout class="QFormLayout" name="formLayout">
+          <item row="0" column="0">
+           <widget class="QPushButton" name="openScenarioButton">
+            <property name="text">
+             <string>Open Scenario</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QPushButton" name="saveScenarioButton">
+            <property name="text">
+             <string>Save Scenario</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QGridLayout" name="gridLayout_3" columnstretch="0,5">
+          <item row="0" column="0">
+           <widget class="QLabel" name="selectLayerLabel">
+            <property name="text">
+             <string>Select layer:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QComboBox" name="selectLayerCombo"/>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="selectAttributeLabel">
+            <property name="text">
+             <string>Select attribute:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QComboBox" name="selectAttributeCombo"/>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="analysisTab">
+       <attribute name="title">
+        <string>analysis</string>
+       </attribute>
+       <layout class="QFormLayout" name="formLayout_4">
+        <item row="1" column="1">
+         <widget class="QPushButton" name="shortestRouteButton">
+          <property name="text">
+           <string>Shortest Route</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QPushButton" name="setODButton">
+          <property name="text">
+           <string>set O/D</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QPushButton" name="catchmentRange">
+          <property name="text">
+           <string>Catchment</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="catchmentRangeEdit"/>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab">
+       <attribute name="title">
+        <string>visualisation</string>
+       </attribute>
+      </widget>
+      <widget class="QWidget" name="visualisationTab">
+       <attribute name="title">
+        <string>reporting</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout" stretch="0,6">
+        <item>
+         <layout class="QGridLayout" name="gridLayout_2">
+          <item row="0" column="1">
+           <widget class="QLCDNumber" name="featureCounterLCD">
+            <property name="font">
+             <font>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="frameShape">
+             <enum>QFrame::Panel</enum>
+            </property>
+            <property name="frameShadow">
+             <enum>QFrame::Sunken</enum>
+            </property>
+            <property name="segmentStyle">
+             <enum>QLCDNumber::Filled</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="featureCounterLabel">
+            <property name="text">
+             <string>Feature counter:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="2">
+           <widget class="QPushButton" name="featureCounterUpdateButton">
+            <property name="text">
+             <string>Update</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QPushButton" name="saveMapPathButton">
+            <property name="text">
+             <string>...</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QPushButton" name="saveMapButton">
+            <property name="text">
+             <string>Save Map</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0" colspan="2">
+           <widget class="QLineEdit" name="saveMapPathEdit"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QListWidget" name="listWidget"/>
+        </item>
+       </layout>
+      </widget>
      </widget>
     </item>
    </layout>
