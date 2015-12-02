@@ -36,7 +36,6 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 
     closingPlugin = QtCore.pyqtSignal()
-
     updateAttribute = QtCore.pyqtSignal(str)
 
     def __init__(self, iface, parent=None):
@@ -51,7 +50,6 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 
         # define globals
         self.iface = iface
-        self.base_layer = None
 
         # set up GUI operation signals
         # data
@@ -59,8 +57,6 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.iface.newProjectCreated.connect(self.updateLayers)
         self.openScenarioButton.clicked.connect(self.openScenario)
         self.saveScenarioButton.clicked.connect(self.saveScenario)
-        self.selectLayerCombo.activated.connect(self.getSelectedLayer)
-        self.selectAttributeCombo.activated.connect(self.getSelectedAttribute)
 
         # analysis
 
@@ -91,23 +87,18 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 #######
 #    Data functions
 #######
-    def openScenario(self):
         scenario_file = os.path.join('/Users/jorge/github/GEO1005','sample_data','time_test.qgs')
         # check if file exists
         if os.path.isfile(scenario_file):
             self.iface.addProject(scenario_file)
-            self.updateLayers()
         else:
             last_dir = uf.getLastDir("SDSS")
             new_file = QtGui.QFileDialog.getOpenFileName(self, "", last_dir, "(*.qgs)")
             if new_file:
                 self.iface.addProject(new_file)
-                self.updateLayers()
-
 
     def saveScenario(self):
         self.iface.actionSaveProject()
-
 
     def updateLayers(self):
         layers = uf.getLegendLayers(self.iface, 'all', 'all')
@@ -121,8 +112,6 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 
     def getSelectedLayer(self):
         layer_name = self.selectLayerCombo.currentText()
-        self.base_layer = uf.getLegendLayerByName(self.iface,layer_name)
-        self.updateAttributes(self.base_layer)
 
     def updateAttributes(self, layer):
         self.selectAttributeCombo.clear()
@@ -130,9 +119,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             fields = uf.getFieldNames(layer)
             self.selectAttributeCombo.addItems(fields)
 
-    def getSelectedAttribute(self):
         field_name = self.selectAttributeCombo.currentText()
-        print field_name
         self.updateAttribute.emit(field_name)
 
 #######
@@ -168,8 +155,6 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
     def saveMap(self):
         filename = self.saveMapPathEdit.text()
         if filename != '':
-            map_window = self.iface.mapCanvas()
-            map_window.saveAsImage(filename,None,"PNG")
 
     def updateReport(self,report):
         pass

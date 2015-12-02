@@ -29,6 +29,16 @@ import resources
 from spatial_decision_dockwidget import SpatialDecisionDockWidget
 import os.path
 
+#change sys path to networkx package if not installed
+import sys
+import inspect
+try:
+    import networkx as nx
+except ImportError, e:
+    cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile(inspect.currentframe()))[0],"external")))
+    if cmd_subfolder not in sys.path:
+        sys.path.insert(0, cmd_subfolder)
+
 
 class SpatialDecision:
     """QGIS Plugin Implementation."""
@@ -207,7 +217,6 @@ class SpatialDecision:
         del self.toolbar
 
     #--------------------------------------------------------------------------
-
     def run(self):
         """Run method that loads and starts the plugin"""
 

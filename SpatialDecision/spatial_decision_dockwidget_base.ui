@@ -82,9 +82,9 @@
          </widget>
         </item>
         <item row="1" column="0">
-         <widget class="QPushButton" name="setODButton">
+         <widget class="QPushButton" name="setNetworkButton">
           <property name="text">
-           <string>set O/D</string>
+           <string>Build Network</string>
           </property>
          </widget>
         </item>

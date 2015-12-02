@@ -24,21 +24,26 @@ from PyQt4 import QtGui, QtCore
 #from PyQt4.QtCore import *
 #from PyQt4.QtGui import *
 from qgis.core import *
+from qgis.gui import *
+from qgis.networkanalysis import *
+
 
 from pyspatialite import dbapi2 as sqlite
 import psycopg2 as pgsql
 import numpy as np
-
-import os.path
 import math
-import sys
+import os.path
+
+try:
+    import networkx as nx
+    has_networkx = True
+except ImportError, e:
+    has_networkx = False
 
 
 #
 # Layer functions
 #
-
-
 def getLegendLayers(iface, geom='all', provider='all'):
     """Return list of valid QgsVectorLayer in QgsLegendInterface, with specific geometry type and/or data provider"""
     layers_list = []
@@ -325,9 +330,9 @@ def getCanvasColour(iface):
     return colour
 
 
-def printCanvas(self, filename=''):
+def printCanvas(filename=''):
     if not filename:
-        filename = '~/print_map.pdf'
+        filename = 'print_map.pdf'
 
     # image size parameters
     imageWidth_mm = 10000
@@ -362,18 +367,108 @@ def printCanvas(self, filename=''):
     image.save(filename, "PDF")
 
 #
+# Network functions
+#
+def makeUndirectedGraph(network_layer, points=list):
+    graph = None
+    tied_points = []
+    if network_layer:
+        director = QgsLineVectorLayerDirector(network_layer, -1, '', '', '', 3)
+        properter = QgsDistanceArcProperter()
+        director.addProperter(properter)
+        # this crs is needed if using rubber bands instead of layer for output
+        #crs = qgis.utils.iface.mapCanvas().mapRenderer().destinationCrs()
+        builder = QgsGraphBuilder(network_layer.crs())
+        tied_points = director.makeGraph(builder, points)
+        graph = builder.graph()
+    return graph, tied_points
+
+
+def calculateRouteTree(graph, tied_points, origin, destination, cost=0):
+    points = []
+    if tied_points:
+        from_point = tied_points[origin]
+        to_point = tied_points[destination]
+    else:
+        return points
+
+    # analyse graph
+    if graph:
+        form_id = graph.findVertex(from_point)
+        tree = QgsGraphAnalyzer.shortestTree(graph, form_id, cost)
+        form_id = tree.findVertex(from_point)
+        to_id = tree.findVertex(to_point)
+
+        # iterate to get all points in route
+        if to_id == -1:
+            pass
+        else:
+            while form_id != to_id:
+                l = tree.vertex(to_id).inArc()
+                if len(l) == 0:
+                    break
+                e = tree.arc(l[0])
+                points.insert(0, tree.vertex(e.inVertex()).point())
+                to_id = e.outVertex()
+
+            points.insert(0, from_point)
+
+    return points
+
+
+def calculateRouteDijkstra(graph, tied_points, origin, destination, cost=0):
+    points = []
+    if tied_points:
+        from_point = tied_points[origin]
+        to_point = tied_points[destination]
+    else:
+        return points
+
+    # analyse graph
+    if graph:
+        from_id = graph.findVertex(from_point)
+        to_id = graph.findVertex(to_point)
+
+        (tree, cost) = QgsGraphAnalyzer.dijkstra(graph, from_id, cost)
+
+        if tree[to_id] == -1:
+            pass
+        else:
+            curPos = to_id
+            while curPos != from_id:
+                points.append(graph.vertex(graph.arc(tree[curPos]).inVertex()).point())
+                curPos = graph.arc(tree[curPos]).outVertex()
+
+            points.append(from_point)
+            points.reverse()
+
+    return points
+
+
+def drawRouteBand(canvas, points, colour='red', width=3):
+    # check QColor.colorNames() for valid colour names
+    rb = QgsRubberBand(canvas, False)
+    try:
+        rb.setColor(QtGui.QColor(colour))
+    except:
+        rb.setColor(QtCore.Qt.red)
+    rb.setWidth(width)
+    for pnt in points:
+        rb.addPoint(pnt)
+    rb.show()
+
+
+#
 # General functions
 #
-
-
-def getLastDir(self, tool_name=''):
+def getLastDir(tool_name=''):
     path = ''
     settings = QtCore.QSettings(tool_name,"")
     settings.value("lastUsedDir",str(""))
     return path
 
 
-def setLastDir(self, filename, tool_name=''):
+def setLastDir(filename, tool_name=''):
     path = QtCore.QFileInfo(filename).absolutePath()
     settings = QtCore.QSettings(tool_name,"")
     settings.setValue("lastUsedDir", str(unicode(path)))
@@ -421,9 +516,95 @@ def truncateNumber(num,digits=9):
 
 
 #------------------------------
+# General database functions
+#------------------------------
+def getDBLayerConnection(layer):
+    provider = layer.providerType()
+    uri = QgsDataSourceURI(layer.dataProvider().dataSourceUri())
+    if provider == 'spatialite':
+        path = uri.database()
+        connection_object = getSpatialiteConnection(path)
+    elif provider == 'postgres':
+        connection_object = pgsql.connect(uri.connectionInfo().encode('utf-8'))
+    else:
+        connection_object = None
+    return connection_object
+
+def getSpatialiteConnection(path):
+    try:
+        connection=sqlite.connect(path)
+    except sqlite.OperationalError, error:
+        #pop_up_error("Unable to connect to selected database: \n %s" % error)
+        connection = None
+    return connection
+
+def getDBLayerTableName(layer):
+    uri = QgsDataSourceURI(layer.dataProvider().dataSourceUri())
+    return uri.table()
+
+
+def getDBLayerGeometryColumn(layer):
+    uri = QgsDataSourceURI(layer.dataProvider().dataSourceUri())
+    return uri.geometryColumn()
+
+
+def getDBLayerPrimaryKey(layer):
+    uri = QgsDataSourceURI(layer.dataProvider().dataSourceUri())
+    return uri.key()
+
+
+#------------------------------
 # Layer creation functions
 #------------------------------
-def createTempLayer(name, srid, attributes, types, values, coords):
+def createTempLayer(name, geometry, srid, attributes, types):
+    #geometry can be 'POINT', 'LINESTRING' or 'POLYGON' or the 'MULTI' version of the previous
+    vlayer = QgsVectorLayer('%s?crs=EPSG:%s'% (geometry, srid), name, "memory")
+    provider = vlayer.dataProvider()
+    #create the required fields
+    vlayer.startEditing()
+    fields = []
+    for i, att in enumerate(attributes):
+        fields.append(QgsField(att, types[i]))
+    # add the fields to the layer
+    try:
+        provider.addAttributes(fields)
+    except:
+        return None
+    QgsMapLayerRegistry.instance().addMapLayer(vlayer)
+    vlayer.commitChanges()
+    return vlayer
+
+
+def insertTempFeatures(layer, geometry=list, attributes=list):
+    provider = layer.dataProvider()
+    geometry_type = provider.geometryType()
+    for i, geom in enumerate(geometry):
+        fet = QgsFeature()
+        if geometry_type == 1:
+            fet.setGeometry(QgsGeometry.fromPoint(geom))
+        elif geometry_type == 2:
+            fet.setGeometry(QgsGeometry.fromPolyline(geom))
+        fet.setAttributes(attributes[i])
+        provider.addFeatures([fet])
+    provider.updateExtents()
+
+
+def drawRouteLayer(crs, route_vertices,name):
+    route_layer = QgsVectorLayer(
+            "LineString?crs=epsg:%s&field=id:integer&index=yes" % crs,
+            "routes",
+            "memory")
+    route_pr = route_layer.dataProvider()
+    #for i, point in enumerate(route_vertices[:-1]):
+    fet = QgsFeature()
+    fet.setGeometry(QgsGeometry.fromPolyline(route_vertices))
+    fet.setAttributes([name,len(route_vertices)])
+    route_pr.addFeatures([fet])
+    route_layer.updateExtents()
+    QgsMapLayerRegistry.instance().addMapLayer(route_layer)
+
+
+def createTempLayerFull(name, srid, attributes, types, values, coords):
     # create an instance of a memory vector layer
     type = ''
     if len(coords) == 2: type = 'Point'
@@ -483,44 +664,6 @@ def createIndex(layer):
         return index
     else:
         return None
-
-
-#------------------------------
-# General database functions
-#------------------------------
-def getDBLayerConnection(layer):
-    provider = layer.providerType()
-    uri = QgsDataSourceURI(layer.dataProvider().dataSourceUri())
-    if provider == 'spatialite':
-        path = uri.database()
-        connection_object = getSpatialiteConnection(path)
-    elif provider == 'postgres':
-        connection_object = pgsql.connect(uri.connectionInfo().encode('utf-8'))
-    else:
-        connection_object = None
-    return connection_object
-
-def getSpatialiteConnection(path):
-    try:
-        connection=sqlite.connect(path)
-    except sqlite.OperationalError, error:
-        #pop_up_error("Unable to connect to selected database: \n %s" % error)
-        connection = None
-    return connection
-
-def getDBLayerTableName(layer):
-    uri = QgsDataSourceURI(layer.dataProvider().dataSourceUri())
-    return uri.table()
-
-
-def getDBLayerGeometryColumn(layer):
-    uri = QgsDataSourceURI(layer.dataProvider().dataSourceUri())
-    return uri.geometryColumn()
-
-
-def getDBLayerPrimaryKey(layer):
-    uri = QgsDataSourceURI(layer.dataProvider().dataSourceUri())
-    return uri.key()
 
 
 #---------------------------------------------
