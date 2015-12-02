@@ -24,7 +24,6 @@ from PyQt4 import QtGui, QtCore
 #from PyQt4.QtCore import *
 #from PyQt4.QtGui import *
 from qgis.core import *
-from qgis.gui import *
 from qgis.networkanalysis import *
 
 
@@ -271,6 +270,8 @@ def getFeaturesByRangeValues(layer, name, min, max):
     return features
 
 
+
+
 def getAllFeatures(layer):
     allfeatures = {}
     if layer:
@@ -316,7 +317,27 @@ def getAllFeatureData(layer):
                 symbols = {feature.id(): QColor(200,200,200,255)}
     return data, symbols
 
+def getFeaturesByIntersection(roads_layer, obstacles_layer, inside):
+    features = []
+    # retrieve objects to be intersected (list comprehension, more pythonic)
+    obstacles_geom = [QgsGeometry(feat.geometry()) for feat in obstacles_layer.getFeatures()]
+    #print 'obstacles %s' % obstacles_geom[1].wkbType()
+    roads = roads_layer.getFeatures()
+    # loop through road features and obstacles
+    # appends if intersecting, when inside = True
+    # does the opposite if inside = False
+    # should improve with spatial index for large data sets
+    for feat in roads:
+        append = not inside
+        road_geom = QgsGeometry(feat.geometry())
+        for obst in obstacles_geom:
+            if road_geom.intersects(obst):
+                append = inside
+                break
+        if append:
+            features.append(feat)
 
+    return features
 #
 # Canvas functions
 #
@@ -561,21 +582,23 @@ def createTempLayer(name, geometry, srid, attributes, types):
     vlayer = QgsVectorLayer('%s?crs=EPSG:%s'% (geometry, srid), name, "memory")
     provider = vlayer.dataProvider()
     #create the required fields
-    vlayer.startEditing()
-    fields = []
-    for i, att in enumerate(attributes):
-        fields.append(QgsField(att, types[i]))
-    # add the fields to the layer
-    try:
-        provider.addAttributes(fields)
-    except:
-        return None
-    QgsMapLayerRegistry.instance().addMapLayer(vlayer)
-    vlayer.commitChanges()
+    if attributes:
+        vlayer.startEditing()
+        fields = []
+        for i, att in enumerate(attributes):
+            fields.append(QgsField(att, types[i]))
+        # add the fields to the layer
+        try:
+            provider.addAttributes(fields)
+        except:
+            return None
+        vlayer.commitChanges()
     return vlayer
 
+def loadTempLayer(layer):
+    QgsMapLayerRegistry.instance().addMapLayer(layer)
 
-def insertTempFeatures(layer, geometry=list, attributes=list):
+def insertTempFeatures(layer, geometry, attributes):
     provider = layer.dataProvider()
     geometry_type = provider.geometryType()
     for i, geom in enumerate(geometry):
@@ -584,7 +607,8 @@ def insertTempFeatures(layer, geometry=list, attributes=list):
             fet.setGeometry(QgsGeometry.fromPoint(geom))
         elif geometry_type == 2:
             fet.setGeometry(QgsGeometry.fromPolyline(geom))
-        fet.setAttributes(attributes[i])
+        if attributes:
+            fet.setAttributes(attributes[i])
         provider.addFeatures([fet])
     provider.updateExtents()
 
