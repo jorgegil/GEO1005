@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/plugins/SpatialDecision" >
         <file>icon.png</file>
+        <file>sdss_icon.png</file>
     </qresource>
 </RCC>
