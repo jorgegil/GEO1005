@@ -18,7 +18,7 @@
     <item row="0" column="0">
      <widget class="QTabWidget" name="sampleWidgets">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="dataTab">
        <attribute name="title">
@@ -87,13 +87,6 @@
         <string>analysis</string>
        </attribute>
        <layout class="QFormLayout" name="formLayout_4">
-        <item row="1" column="1">
-         <widget class="QPushButton" name="shortestRouteButton">
-          <property name="text">
-           <string>Shortest Route</string>
-          </property>
-         </widget>
-        </item>
         <item row="1" column="0">
          <widget class="QPushButton" name="setNetworkButton">
           <property name="text">
@@ -101,15 +94,43 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="0">
-         <widget class="QPushButton" name="catchmentRange">
+        <item row="3" column="0">
+         <widget class="QPushButton" name="serviceAreaButton">
           <property name="text">
-           <string>Catchment</string>
+           <string>ServiceArea</string>
           </property>
          </widget>
         </item>
-        <item row="2" column="1">
-         <widget class="QLineEdit" name="catchmentRangeEdit"/>
+        <item row="3" column="1">
+         <widget class="QLineEdit" name="serviceAreaCutoffEdit">
+          <property name="text">
+           <string>1500</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QPushButton" name="shortestRouteButton">
+          <property name="text">
+           <string>Shortest Route</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLabel" name="networkLabel">
+          <property name="text">
+           <string>Uses selected objects for origins / destinations</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0">
+         <widget class="QPushButton" name="bufferButton">
+          <property name="text">
+           <string>Buffer</string>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>
@@ -124,26 +145,7 @@
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout" stretch="0,6">
         <item>
-         <layout class="QGridLayout" name="gridLayout_2">
-          <item row="0" column="1">
-           <widget class="QLCDNumber" name="featureCounterLCD">
-            <property name="font">
-             <font>
-              <weight>75</weight>
-              <bold>true</bold>
-             </font>
-            </property>
-            <property name="frameShape">
-             <enum>QFrame::Panel</enum>
-            </property>
-            <property name="frameShadow">
-             <enum>QFrame::Sunken</enum>
-            </property>
-            <property name="segmentStyle">
-             <enum>QLCDNumber::Filled</enum>
-            </property>
-           </widget>
-          </item>
+         <layout class="QGridLayout" name="gridLayout_2" rowstretch="0,1,1" rowminimumheight="0,1,1">
           <item row="0" column="0">
            <widget class="QLabel" name="featureCounterLabel">
             <property name="text">
@@ -174,6 +176,9 @@
           </item>
           <item row="1" column="0" colspan="2">
            <widget class="QLineEdit" name="saveMapPathEdit"/>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="featureCounterEdit"/>
           </item>
          </layout>
         </item>

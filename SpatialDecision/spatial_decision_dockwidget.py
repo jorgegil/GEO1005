@@ -70,6 +70,8 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.tied_points = []
         self.setNetworkButton.clicked.connect(self.buildNetwork)
         self.shortestRouteButton.clicked.connect(self.calculateRoute)
+        self.serviceAreaButton.clicked.connect(self.calculateServiceArea)
+        self.bufferButton.clicked.connect(self.calculateBuffer)
 
         # visualisation
 
@@ -80,12 +82,10 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 
         # set current UI restrictions
 
-
         # initialisation
         self.updateLayers()
 
         #run simple tests
-
 
     def closeEvent(self, event):
         # disconnect interface signals
@@ -96,7 +96,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         event.accept()
 
 #######
-#    Data functions
+#   Data functions
 #######
     def openScenario(self,filename=""):
         scenario_open = False
@@ -120,12 +120,10 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
     def updateLayers(self):
         layers = uf.getLegendLayers(self.iface, 'all', 'all')
         self.selectLayerCombo.clear()
-        self.base_layer = None
         if layers:
             layer_names = uf.getLayersListNames(layers)
             self.selectLayerCombo.addItems(layer_names)
-            self.base_layer = uf.getLegendLayerByName(self.iface,layer_names[0])
-        self.updateAttributes(self.base_layer)
+            self.setSelectedLayer()
 
     def setSelectedLayer(self):
         layer_name = self.selectLayerCombo.currentText()
@@ -156,30 +154,35 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 #######
     def getNetwork(self):
         roads_layer = self.getSelectedLayer()
-        # see if there is an obstacles layer to subtract roads from the network
-        obstacles_layer = uf.getLegendLayerByName(self.iface, "Obstacles")
-        if obstacles_layer:
-            # retrieve roads outside obstacles (inside = False)
-            features = uf.getFeaturesByIntersection(roads_layer, obstacles_layer, False)
-            # add these roads to a new temporary layer
-            road_network = uf.createTempLayer('Temp_Network','LINESTRING',roads_layer.crs().postgisSrid(),[],[])
-            road_network.dataProvider().addFeatures(features)
+        if roads_layer:
+            # see if there is an obstacles layer to subtract roads from the network
+            obstacles_layer = uf.getLegendLayerByName(self.iface, "Obstacles")
+            if obstacles_layer:
+                # retrieve roads outside obstacles (inside = False)
+                features = uf.getFeaturesByIntersection(roads_layer, obstacles_layer, False)
+                # add these roads to a new temporary layer
+                road_network = uf.createTempLayer('Temp_Network','LINESTRING',roads_layer.crs().postgisSrid(),[],[])
+                road_network.dataProvider().addFeatures(features)
+            else:
+                road_network = roads_layer
+            return road_network
         else:
-            road_network = roads_layer
-        return road_network
+            return
 
     def buildNetwork(self):
         self.network_layer = self.getNetwork()
-        # get the points to be used as origin and destination
-        # in this case gets the centroid of the selected features
-        selected_sources = self.getSelectedLayer().selectedFeatures()
-        source_points = [feature.geometry().centroid().asPoint() for feature in selected_sources]
-        # build the graph including these points
-        if len(source_points) > 1:
-            self.graph, self.tied_points = uf.makeUndirectedGraph(self.network_layer, source_points)
-            # the tied points are the new source_points on the graph
-            if self.graph and self.tied_points:
-                print "network is built for %s points" % len(self.tied_points)
+        if self.network_layer:
+            # get the points to be used as origin and destination
+            # in this case gets the centroid of the selected features
+            selected_sources = self.getSelectedLayer().selectedFeatures()
+            source_points = [feature.geometry().centroid().asPoint() for feature in selected_sources]
+            # build the graph including these points
+            if len(source_points) > 1:
+                self.graph, self.tied_points = uf.makeUndirectedGraph(self.network_layer, source_points)
+                # the tied points are the new source_points on the graph
+                if self.graph and self.tied_points:
+                    print "network is built for %s points" % len(self.tied_points)
+        return
 
     def calculateRoute(self):
         # origin and destination must be in the set of tied_points
@@ -190,15 +193,80 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             destination = random.randint(1,options-1)
             # calculate the shortest path for the given origin and destination
             path = uf.calculateRouteDijkstra(self.graph, self.tied_points, origin, destination)
-            #create a layer to store the route results
+            # store the route results in temporary layer called "Routes"
             routes_layer = uf.getLegendLayerByName(self.iface, "Routes")
+            # create one if it doesn't exist
             if not routes_layer:
-                attribs = ['id','distance']
-                types = [QtCore.QVariant.String,QtCore.QVariant.Double]
+                attribs = ['id']
+                types = [QtCore.QVariant.String]
                 routes_layer = uf.createTempLayer('Routes','LINESTRING',self.network_layer.crs().postgisSrid(), attribs, types)
                 uf.loadTempLayer(routes_layer)
+            # insert route line
             uf.insertTempFeatures(routes_layer, [path], [['testing',100.00]])
             self.refreshCanvas(routes_layer)
+
+    def getServiceAreaCutoff(self):
+        cutoff = self.serviceAreaCutoffEdit.text()
+        if uf.isNumeric(cutoff):
+            return uf.convertNumeric(cutoff)
+        else:
+            return 0
+
+    def calculateServiceArea(self):
+        options = len(self.tied_points)
+        if options > 0:
+            # origin is given as an index in the tied_points list
+            origin = random.randint(1,options-1)
+            cutoff_distance = self.getServiceAreaCutoff()
+            if cutoff_distance == 0:
+                return
+            service_area = uf.calculateServiceArea(self.graph, self.tied_points, origin, cutoff_distance)
+            # store the service area results in temporary layer called "Service_Area"
+            area_layer = uf.getLegendLayerByName(self.iface, "Service_Area")
+            # create one if it doesn't exist
+            if not area_layer:
+                attribs = ['cost']
+                types = [QtCore.QVariant.Double]
+                area_layer = uf.createTempLayer('Service_Area','POINT',self.network_layer.crs().postgisSrid(), attribs, types)
+                uf.loadTempLayer(area_layer)
+            # insert service area points
+            geoms = []
+            values = []
+            for point in service_area.itervalues():
+                # each point is a tuple with geometry and cost
+                geoms.append(point[0])
+                # in the case of values, it expects a list of multiple values in each item - list of lists
+                values.append([cutoff_distance])
+            uf.insertTempFeatures(area_layer, geoms, values)
+            self.refreshCanvas(area_layer)
+
+    def calculateBuffer(self):
+        origins = self.getSelectedLayer().selectedFeatures()
+        layer = self.getSelectedLayer()
+        if origins > 0:
+            cutoff_distance = self.getServiceAreaCutoff()
+            buffers = {}
+            for point in origins:
+                geom = point.geometry()
+                buffers[point.id()] = geom.buffer(cutoff_distance,12)
+            # store the service area results in temporary layer called "Buffers"
+            buffer_layer = uf.getLegendLayerByName(self.iface, "Buffers")
+            # create one if it doesn't exist
+            if not buffer_layer:
+                attribs = ['id', 'distance']
+                types = [QtCore.QVariant.String, QtCore.QVariant.Double]
+                buffer_layer = uf.createTempLayer('Buffers','POLYGON',layer.crs().postgisSrid(), attribs, types)
+                uf.loadTempLayer(buffer_layer)
+            # insert buffer polygons
+            geoms = []
+            values = []
+            for buffer in buffers.iteritems():
+                # each buffer has an id and a geometry
+                geoms.append(buffer[1])
+                # in the case of values, it expects a list of multiple values in each item - list of lists
+                values.append([buffer[0],cutoff_distance])
+            uf.insertTempFeatures(buffer_layer, geoms, values)
+            self.refreshCanvas(buffer_layer)
 
     def refreshCanvas(self, layer):
         if self.canvas.isCachingEnabled():
@@ -216,9 +284,10 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 #    Reporting functions
 #######
     def updateNumberFeatures(self):
-        if self.base_layer:
-            count = self.base_layer.featureCount()
-            self.featureCounterLCD.display(count)
+        layer = self.getSelectedLayer()
+        if layer:
+            count = layer.featureCount()
+            self.featureCounterEdit.setText(str(count))
 
     def selectFile(self):
         last_dir = uf.getLastDir("SDSS")
@@ -226,7 +295,6 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         if path.strip()!="":
             path = unicode(path)
             uf.setLastDir(path,"SDSS")
-            #name = os.path.basename(path)
             self.saveMapPathEdit.setText(path)
 
     def saveMap(self):
