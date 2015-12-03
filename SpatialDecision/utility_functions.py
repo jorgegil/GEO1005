@@ -296,6 +296,26 @@ def selectFeaturesByRangeValues(layer, name, min, max):
             layer.select(features)
 
 
+def selectFeaturesByExpression(layer, expression):
+    features = []
+    if layer:
+        request = QgsFeatureRequest().setFilterExpression(expression)
+        iterator = layer.getFeatures(request)
+        for feature in iterator:
+            features.append(feature.id())
+        layer.select(features)
+
+
+def filterFeaturesByExpression(layer, expression):
+    success = False
+    if layer:
+        try:
+           success = layer.setSubsetString(expression)
+        except:
+            success = False
+    return success
+
+
 def getAllFeatures(layer):
     allfeatures = {}
     if layer:

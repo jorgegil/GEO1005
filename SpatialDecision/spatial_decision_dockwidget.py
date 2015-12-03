@@ -74,6 +74,8 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.bufferButton.clicked.connect(self.calculateBuffer)
         self.selectBufferButton.clicked.connect(self.selectFeaturesBuffer)
         self.selectRangeButton.clicked.connect(self.selectFeaturesRange)
+        self.expressionSelectButton.clicked.connect(self.selectFeaturesExpression)
+        self.expressionFilterButton.clicked.connect(self.filterFeaturesExpression)
 
         # visualisation
 
@@ -300,6 +302,14 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             if fields:
                 # selects features with values in the range
                 uf.selectFeaturesByRangeValues(layer, fields[0].name(), min, max)
+
+    def selectFeaturesExpression(self):
+        layer = self.getSelectedLayer()
+        uf.selectFeaturesByExpression(layer, self.expressionEdit.text())
+
+    def filterFeaturesExpression(self):
+        layer = self.getSelectedLayer()
+        uf.filterFeaturesByExpression(layer, self.expressionEdit.text())
 
 #######
 #    Visualisation functions
