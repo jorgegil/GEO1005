@@ -72,6 +72,8 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.shortestRouteButton.clicked.connect(self.calculateRoute)
         self.serviceAreaButton.clicked.connect(self.calculateServiceArea)
         self.bufferButton.clicked.connect(self.calculateBuffer)
+        self.selectBufferButton.clicked.connect(self.selectFeaturesBuffer)
+        self.selectRangeButton.clicked.connect(self.selectFeaturesRange)
 
         # visualisation
 
@@ -240,11 +242,18 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             uf.insertTempFeatures(area_layer, geoms, values)
             self.refreshCanvas(area_layer)
 
+    def getBufferCutoff(self):
+        cutoff = self.bufferCutoffEdit.text()
+        if uf.isNumeric(cutoff):
+            return uf.convertNumeric(cutoff)
+        else:
+            return 0
+
     def calculateBuffer(self):
         origins = self.getSelectedLayer().selectedFeatures()
         layer = self.getSelectedLayer()
         if origins > 0:
-            cutoff_distance = self.getServiceAreaCutoff()
+            cutoff_distance = self.getBufferCutoff()
             buffers = {}
             for point in origins:
                 geom = point.geometry()
@@ -273,6 +282,24 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             layer.setCacheImage(None)
         else:
             self.canvas.refresh()
+
+    def selectFeaturesBuffer(self):
+        layer = self.getSelectedLayer()
+        buffer_layer = uf.getLegendLayerByName(self.iface, "Buffers")
+        if buffer_layer and layer:
+            uf.selectFeaturesByIntersection(layer, buffer_layer, True)
+
+    def selectFeaturesRange(self):
+        layer = self.getSelectedLayer()
+        # for the range takes values from the service area (max) and buffer (min) text edits
+        max = self.getServiceAreaCutoff()
+        min = self.getBufferCutoff()
+        if layer and max and min:
+            # gets list of numeric fields in layer
+            fields = uf.getNumericFields(layer)
+            if fields:
+                # selects features with values in the range
+                uf.selectFeaturesByRangeValues(layer, fields[0].name(), min, max)
 
 #######
 #    Visualisation functions
