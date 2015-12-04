@@ -66,7 +66,7 @@
            <widget class="QComboBox" name="selectAttributeCombo"/>
           </item>
           <item row="2" column="0">
-           <widget class="QPushButton" name="pushButton">
+           <widget class="QPushButton" name="medicButton">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -89,7 +89,7 @@
            </widget>
           </item>
           <item row="2" column="1">
-           <widget class="QPushButton" name="pushButton_2">
+           <widget class="QPushButton" name="ambulanceButton">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
               <horstretch>0</horstretch>
@@ -217,6 +217,13 @@
          <widget class="QPushButton" name="expressionFilterButton">
           <property name="text">
            <string>Filter</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QPushButton" name="clearRouteButton">
+          <property name="text">
+           <string>Clear Routes</string>
           </property>
          </widget>
         </item>
