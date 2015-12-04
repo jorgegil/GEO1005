@@ -24,6 +24,8 @@
 from PyQt4 import QtGui, QtCore, uic
 from qgis.core import *
 from qgis.networkanalysis import *
+# Initialize Qt resources from file resources.py
+import resources
 
 import os
 import os.path
@@ -74,6 +76,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.serviceAreaButton.clicked.connect(self.calculateServiceArea)
         self.bufferButton.clicked.connect(self.calculateBuffer)
         self.selectBufferButton.clicked.connect(self.selectFeaturesBuffer)
+        self.makeIntersectionButton.clicked.connect(self.calculateIntersection)
         self.selectRangeButton.clicked.connect(self.selectFeaturesRange)
         self.expressionSelectButton.clicked.connect(self.selectFeaturesExpression)
         self.expressionFilterButton.clicked.connect(self.filterFeaturesExpression)
@@ -87,6 +90,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.updateAttribute.connect(self.extractAttributeSummary)
 
         # set current UI restrictions
+        self.makeIntersectionButton.hide()
 
         # initialisation
         self.updateLayers()
@@ -277,7 +281,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             for point in origins:
                 geom = point.geometry()
                 buffers[point.id()] = geom.buffer(cutoff_distance,12)
-            # store the service area results in temporary layer called "Buffers"
+            # store the buffer results in temporary layer called "Buffers"
             buffer_layer = uf.getLegendLayerByName(self.iface, "Buffers")
             # create one if it doesn't exist
             if not buffer_layer:
@@ -296,6 +300,37 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             uf.insertTempFeatures(buffer_layer, geoms, values)
             self.refreshCanvas(buffer_layer)
 
+    def calculateIntersection(self):
+        # use the buffer to cut from another layer
+        cutter = uf.getLegendLayerByName(self.iface, "Buffers")
+        # use the selected layer for cutting
+        layer = self.getSelectedLayer()
+        if cutter.featureCount() > 0:
+            # get the intersections between the two layers
+            intersections = uf.getFeaturesIntersections(layer,cutter)
+            if intersections:
+                # store the intersection geometries results in temporary layer called "Intersections"
+                intersection_layer = uf.getLegendLayerByName(self.iface, "Intersections")
+                # create one if it doesn't exist
+                if not intersection_layer:
+                    geom_type = intersections[0].type()
+                    if geom_type == 1:
+                        intersection_layer = uf.createTempLayer('Intersections','POINT',layer.crs().postgisSrid(), [], [])
+                    elif geom_type == 2:
+                        intersection_layer = uf.createTempLayer('Intersections','LINESTRING',layer.crs().postgisSrid(), [], [])
+                    elif geom_type == 3:
+                        intersection_layer = uf.createTempLayer('Intersections','POLYGON',layer.crs().postgisSrid(), [], [])
+                    uf.loadTempLayer(intersection_layer)
+                # insert buffer polygons
+                geoms = []
+                values = []
+                for intersect in intersections:
+                    # each buffer has an id and a geometry
+                    geoms.append(intersect)
+                uf.insertTempFeatures(intersection_layer, geoms, values)
+                self.refreshCanvas(intersection_layer)
+
+    # after adding features to layers needs a refresh (sometimes)
     def refreshCanvas(self, layer):
         if self.canvas.isCachingEnabled():
             layer.setCacheImage(None)
@@ -339,12 +374,14 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 #######
 #    Reporting functions
 #######
+    # update a text edit field
     def updateNumberFeatures(self):
         layer = self.getSelectedLayer()
         if layer:
             count = layer.featureCount()
             self.featureCounterEdit.setText(str(count))
 
+    # selecting a file for saving
     def selectFile(self):
         last_dir = uf.getLastDir("SDSS")
         path = QtGui.QFileDialog.getSaveFileName(self, "Save map file", last_dir, "PNG (*.png)")
@@ -353,6 +390,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             uf.setLastDir(path,"SDSS")
             self.saveMapPathEdit.setText(path)
 
+    # saving the current screen
     def saveMap(self):
         filename = self.saveMapPathEdit.text()
         if filename != '':
