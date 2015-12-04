@@ -238,7 +238,7 @@
        <attribute name="title">
         <string>reporting</string>
        </attribute>
-       <layout class="QVBoxLayout" name="verticalLayout" stretch="0,6">
+       <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
         <item>
          <layout class="QGridLayout" name="gridLayout_2" rowstretch="0,1,1" rowminimumheight="0,1,1">
           <item row="0" column="0">
@@ -278,7 +278,10 @@
          </layout>
         </item>
         <item>
-         <widget class="QListWidget" name="listWidget"/>
+         <widget class="QListWidget" name="reportList"/>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="statisticsTable"/>
         </item>
        </layout>
       </widget>

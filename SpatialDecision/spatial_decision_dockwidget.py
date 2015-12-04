@@ -70,6 +70,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.tied_points = []
         self.setNetworkButton.clicked.connect(self.buildNetwork)
         self.shortestRouteButton.clicked.connect(self.calculateRoute)
+        self.clearRouteButton.clicked.connect(self.deleteRoutes)
         self.serviceAreaButton.clicked.connect(self.calculateServiceArea)
         self.bufferButton.clicked.connect(self.calculateBuffer)
         self.selectBufferButton.clicked.connect(self.selectFeaturesBuffer)
@@ -83,6 +84,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.featureCounterUpdateButton.clicked.connect(self.updateNumberFeatures)
         self.saveMapButton.clicked.connect(self.saveMap)
         self.saveMapPathButton.clicked.connect(self.selectFile)
+        self.updateAttribute.connect(self.extractAttributeSummary)
 
         # set current UI restrictions
 
@@ -144,6 +146,9 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         if layer:
             fields = uf.getFieldNames(layer)
             self.selectAttributeCombo.addItems(fields)
+            # send list to the report list window
+            self.clearReport()
+            self.updateReport(fields)
 
     def setSelectedAttribute(self):
         field_name = self.selectAttributeCombo.currentText()
@@ -156,6 +161,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 #######
 #    Analysis functions
 #######
+    # route functions
     def getNetwork(self):
         roads_layer = self.getSelectedLayer()
         if roads_layer:
@@ -185,7 +191,8 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
                 self.graph, self.tied_points = uf.makeUndirectedGraph(self.network_layer, source_points)
                 # the tied points are the new source_points on the graph
                 if self.graph and self.tied_points:
-                    print "network is built for %s points" % len(self.tied_points)
+                    text = "network is built for %s points" % len(self.tied_points)
+                    self.insertReport(text)
         return
 
     def calculateRoute(self):
@@ -208,6 +215,15 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             # insert route line
             uf.insertTempFeatures(routes_layer, [path], [['testing',100.00]])
             self.refreshCanvas(routes_layer)
+
+    def deleteRoutes(self):
+        routes_layer = uf.getLegendLayerByName(self.iface, "Routes")
+        if routes_layer:
+            ids = uf.getAllFeatureIds(routes_layer)
+            routes_layer.startEditing()
+            for id in ids:
+                routes_layer.deleteFeature(id)
+            routes_layer.commitChanges()
 
     def getServiceAreaCutoff(self):
         cutoff = self.serviceAreaCutoffEdit.text()
@@ -244,6 +260,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             uf.insertTempFeatures(area_layer, geoms, values)
             self.refreshCanvas(area_layer)
 
+    # buffer functions
     def getBufferCutoff(self):
         cutoff = self.bufferCutoffEdit.text()
         if uf.isNumeric(cutoff):
@@ -285,6 +302,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         else:
             self.canvas.refresh()
 
+    # feature selection
     def selectFeaturesBuffer(self):
         layer = self.getSelectedLayer()
         buffer_layer = uf.getLegendLayerByName(self.iface, "Buffers")
@@ -310,6 +328,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
     def filterFeaturesExpression(self):
         layer = self.getSelectedLayer()
         uf.filterFeaturesByExpression(layer, self.expressionEdit.text())
+
 
 #######
 #    Visualisation functions
@@ -339,7 +358,37 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         if filename != '':
             self.canvas.saveAsImage(filename,None,"PNG")
 
+    def extractAttributeSummary(self, attribute):
+        # get summary of the attribute
+        summary = []
+        layer = self.getSelectedLayer()
+
+        # send this to the table
+        self.clearTable()
+        self.updateTable(summary)
+
+    # report window functions
     def updateReport(self,report):
-        pass
+        self.reportList.clear()
+        self.reportList.addItems(report)
 
+    def insertReport(self,item):
+        self.reportList.insertItem(0, item)
 
+    def clearReport(self):
+        self.reportList.clear()
+
+    # table window functions
+    def updateTable(self, values):
+        # takes a list of label / value pairs, can be tuples or lists. not dictionaries to control order
+        self.statisticsTable.setHorizontalHeaderLabels(["Item","Value"])
+        self.statisticsTable.setRowCount(len(values))
+        for i, item in enumerate(values):
+            self.statisticsTable.setItem(i,0,QtGui.QTableWidgetItem(str(item[0])))
+            self.statisticsTable.setItem(i,1,QtGui.QTableWidgetItem(str(item[1])))
+        self.statisticsTable.horizontalHeader().setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
+        self.statisticsTable.horizontalHeader().setResizeMode(1, QtGui.QHeaderView.Stretch)
+        self.statisticsTable.resizeRowsToContents()
+
+    def clearTable(self):
+        self.statisticsTable.clear()

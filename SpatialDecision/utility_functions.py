@@ -365,7 +365,7 @@ def getAllFeatureData(layer):
 def getFeaturesByIntersection(base_layer, intersect_layer, crosses):
     features = []
     # retrieve objects to be intersected (list comprehension, more pythonic)
-    obstacles_geom = [QgsGeometry(feat.geometry()) for feat in intersect_layer.getFeatures()]
+    intersect_geom = [QgsGeometry(feat.geometry()) for feat in intersect_layer.getFeatures()]
     # retrieve base layer objects
     base = base_layer.getFeatures()
     # should improve with spatial index for large data sets
@@ -376,14 +376,28 @@ def getFeaturesByIntersection(base_layer, intersect_layer, crosses):
     for feat in base:
         append = not crosses
         base_geom = QgsGeometry(feat.geometry())
-        for obst in obstacles_geom:
-            if base_geom.intersects(obst):
+        for intersect in intersect_geom:
+            if base_geom.intersects(intersect):
                 append = crosses
                 break
         if append:
             features.append(feat)
-
     return features
+
+
+def getFeaturesIntersections(base_layer, intersect_layer):
+    intersections = []
+    # retrieve objects to be intersected (list comprehension, more pythonic)
+    obstacles_geom = [QgsGeometry(feat.geometry()) for feat in intersect_layer.getFeatures()]
+    # retrieve base layer objects
+    base = base_layer.getFeatures()
+    # loop through base features and intersecting elements
+    for feat in base:
+        base_geom = QgsGeometry(feat.geometry())
+        for obst in obstacles_geom:
+            if base_geom.intersects(obst):
+                intersections.append(base_geom.intersection(obst))
+    return intersections
 
 
 def selectFeaturesByIntersection(base_layer, intersect_layer, crosses):
