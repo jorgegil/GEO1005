@@ -188,7 +188,7 @@ class SpatialDecision:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = ':/plugins/SpatialDecision/sdss_icon.png'
+        icon_path = ':/plugins/SpatialDecision/icons/sdss_icon.png'
         self.add_action(
             icon_path,
             text=self.tr(u'SDSS Template'),
