@@ -23,6 +23,7 @@
 from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt
 from PyQt4.QtGui import QAction, QIcon
 from qgis.core import *
+
 # Initialize Qt resources from file resources.py
 import resources
 
@@ -188,7 +189,7 @@ class SpatialDecision:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = ':/plugins/SpatialDecision/icons/sdss_icon.png'
+        icon_path = self.plugin_dir + '/icons/icon.png'
         self.add_action(
             icon_path,
             text=self.tr(u'SDSS Template'),

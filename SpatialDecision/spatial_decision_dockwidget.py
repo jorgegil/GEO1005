@@ -92,6 +92,11 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         # set current UI restrictions
         self.makeIntersectionButton.hide()
 
+        # add button icons
+        self.medicButton.setIcon(QtGui.QIcon(':icons/medic_box.png'))
+        self.ambulanceButton.setIcon(QtGui.QIcon(':icons/ambulance.png'))
+
+
         # initialisation
         self.updateLayers()
 
