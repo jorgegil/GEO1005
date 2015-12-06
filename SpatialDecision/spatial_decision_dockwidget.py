@@ -85,6 +85,8 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.expressionFilterButton.clicked.connect(self.filterFeaturesExpression)
 
         # visualisation
+        self.displayStyleButton.clicked.connect(self.displayBenchmarkStyle)
+        self.displayRangeButton.clicked.connect(self.displayContinuousStyle)
 
         # reporting
         self.featureCounterUpdateButton.clicked.connect(self.updateNumberFeatures)
@@ -325,7 +327,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             intersection = processing.runandload('qgis:intersection',layer,cutter,None)
             intersection_layer = uf.getLegendLayerByName(self.iface, "Intersection")
             # prepare results layer
-            save_path = QgsProject.instance().homePath()+"/dissolve_results.shp"
+            save_path = "%s/dissolve_results.shp" % QgsProject.instance().homePath()
             # dissolve grouping by origin id
             dissolve = processing.runandload('qgis:dissolve',intersection_layer,False,'id',save_path)
             dissolved_layer = uf.getLegendLayerByName(self.iface, "Dissolved")
@@ -375,8 +377,48 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 #######
 #    Visualisation functions
 #######
+    def displayBenchmarkStyle(self):
+        # loads a predefined style on a layer.
+        # Best for simple, rule based styles, and categorical variables
+        # attributes and values classes are hard coded in the style
+        layer = uf.getLegendLayerByName(self.iface, "Obstacles")
+        path = "%s/styles/" % QgsProject.instance().homePath()
+        # load a categorical style
+        layer.loadNamedStyle("%sobstacle_danger.qml" % path)
+        # load a simple style
+        layer = uf.getLegendLayerByName(self.iface, "Buffers")
+        layer.loadNamedStyle("%sbuffer.qml" % path)
+        self.iface.legendInterface().refreshLayerSymbology(layer)
+        self.canvas.refresh()
 
-
+    def displayContinuousStyle(self):
+        # produces a new symbology renderer for graduated style
+        layer = self.getSelectedLayer()
+        attribute = self.getSelectedAttribute()
+        # define several display parameters
+        display_settings = {}
+        # define the interval type and number of intervals
+        # EqualInterval = 0; Quantile  = 1; Jenks = 2; StdDev = 3; Pretty = 4;
+        display_settings['interval_type'] = 1
+        display_settings['intervals'] = 10
+        # define the line width
+        display_settings['line_width'] = 0.5
+        # define the colour ramp
+        # the ramp's bottom and top colour. These are RGB tuples that can be edited
+        ramp = QgsVectorGradientColorRampV2(QtGui.QColor(0, 0, 255, 255), QtGui.QColor(255, 0, 0, 255), False)
+        # any other stops for intermediate colours for greater control. can be edited or skipped
+        ramp.setStops([QgsGradientStop(0.25, QtGui.QColor(0, 255, 255, 255)),
+                       QgsGradientStop(0.5, QtGui.QColor(0,255,0,255)),
+                       QgsGradientStop(0.75, QtGui.QColor(255, 255, 0, 255))])
+        display_settings['ramp'] = ramp
+        # call the update renderer function
+        renderer = uf.updateRenderer(layer, attribute, display_settings)
+        # update the canvas
+        if renderer:
+            layer.setRendererV2(renderer)
+            layer.triggerRepaint()
+            self.iface.legendInterface().refreshLayerSymbology(layer)
+            self.canvas.refresh()
 
 #######
 #    Reporting functions

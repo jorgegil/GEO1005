@@ -458,6 +458,37 @@ def showMessage(iface, msg, type='Info', lev=1, dur=2):
     iface.messageBar().pushMessage(type,msg,level=lev,duration=dur)
 
 
+def updateRenderer(layer, attribute, settings):
+    """
+    Creates a renderer for the layer based on this, and applies it
+    The renderer uses GradientColourRamp to calculate the symbol colours
+
+    @param layer: the selected QgsVectorLayer object
+    """
+    geometry = layer.geometryType()
+    # create a colour ramp based on colour range type, inverting symbols if required
+    ramp = settings['ramp']
+    line_width = float(settings['line_width'])
+    # calculate ranges: EqualInterval = 0; Quantile  = 1; Jenks = 2; StdDev = 3; Pretty = 4; Custom = 5
+    intervals = int(settings['intervals'])
+    interval_type = int(settings['interval_type'])
+    renderer = None
+    # set symbol type and line width
+    symbol = QgsSymbolV2.defaultSymbol(geometry)
+    if symbol:
+        if symbol.type() == 1:  # line
+            symbol.setWidth(line_width)
+        elif symbol.type() == 2:  # line
+            symbol = QgsFillSymbolV2.createSimple({'style': 'solid', 'color': 'black', 'width_border': '%s' % line_width})
+        elif symbol.type() == 0:  # point
+            symbol.setSize(line_width)
+        renderer = QgsGraduatedSymbolRendererV2.createRenderer(layer, attribute, intervals, interval_type, symbol, ramp)
+        renderer.setMode(interval_type)
+        renderer.setSourceColorRamp(ramp)
+    return renderer
+
+
+
 #
 # Network functions
 #
