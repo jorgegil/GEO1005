@@ -385,9 +385,13 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         path = "%s/styles/" % QgsProject.instance().homePath()
         # load a categorical style
         layer.loadNamedStyle("%sobstacle_danger.qml" % path)
+        layer.triggerRepaint()
+        self.iface.legendInterface().refreshLayerSymbology(layer)
+        
         # load a simple style
         layer = uf.getLegendLayerByName(self.iface, "Buffers")
         layer.loadNamedStyle("%sbuffer.qml" % path)
+        layer.triggerRepaint()
         self.iface.legendInterface().refreshLayerSymbology(layer)
         self.canvas.refresh()
 
