@@ -24,6 +24,7 @@
 from PyQt4 import QtGui, QtCore, uic
 from qgis.core import *
 from qgis.networkanalysis import *
+import processing
 # Initialize Qt resources from file resources.py
 import resources
 
@@ -62,6 +63,8 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         # data
         self.iface.projectRead.connect(self.updateLayers)
         self.iface.newProjectCreated.connect(self.updateLayers)
+        self.iface.legendInterface().itemRemoved.connect(self.updateLayers)
+        self.iface.legendInterface().itemAdded.connect(self.updateLayers)
         self.openScenarioButton.clicked.connect(self.openScenario)
         self.saveScenarioButton.clicked.connect(self.saveScenario)
         self.selectLayerCombo.activated.connect(self.setSelectedLayer)
@@ -90,7 +93,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.updateAttribute.connect(self.extractAttributeSummary)
 
         # set current UI restrictions
-        self.makeIntersectionButton.hide()
+
 
         # add button icons
         self.medicButton.setIcon(QtGui.QIcon(':icons/medic_box.png'))
@@ -104,8 +107,13 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 
     def closeEvent(self, event):
         # disconnect interface signals
-        self.iface.projectRead.disconnect(self.updateLayers)
-        self.iface.newProjectCreated.disconnect(self.updateLayers)
+        try:
+            self.iface.projectRead.disconnect(self.updateLayers)
+            self.iface.newProjectCreated.disconnect(self.updateLayers)
+            self.iface.legendInterface().itemRemoved.disconnect(self.updateLayers)
+            self.iface.legendInterface().itemAdded.disconnect(self.updateLayers)
+        except:
+            pass
 
         self.closingPlugin.emit()
         event.accept()
@@ -139,6 +147,8 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             layer_names = uf.getLayersListNames(layers)
             self.selectLayerCombo.addItems(layer_names)
             self.setSelectedLayer()
+        else:
+            self.selectAttributeCombo.clear()
 
     def setSelectedLayer(self):
         layer_name = self.selectLayerCombo.currentText()
@@ -285,7 +295,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             buffers = {}
             for point in origins:
                 geom = point.geometry()
-                buffers[point.id()] = geom.buffer(cutoff_distance,12)
+                buffers[point.id()] = geom.buffer(cutoff_distance,12).asPolygon()
             # store the buffer results in temporary layer called "Buffers"
             buffer_layer = uf.getLegendLayerByName(self.iface, "Buffers")
             # create one if it doesn't exist
@@ -312,28 +322,15 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         layer = self.getSelectedLayer()
         if cutter.featureCount() > 0:
             # get the intersections between the two layers
-            intersections = uf.getFeaturesIntersections(layer,cutter)
-            if intersections:
-                # store the intersection geometries results in temporary layer called "Intersections"
-                intersection_layer = uf.getLegendLayerByName(self.iface, "Intersections")
-                # create one if it doesn't exist
-                if not intersection_layer:
-                    geom_type = intersections[0].type()
-                    if geom_type == 1:
-                        intersection_layer = uf.createTempLayer('Intersections','POINT',layer.crs().postgisSrid(), [], [])
-                    elif geom_type == 2:
-                        intersection_layer = uf.createTempLayer('Intersections','LINESTRING',layer.crs().postgisSrid(), [], [])
-                    elif geom_type == 3:
-                        intersection_layer = uf.createTempLayer('Intersections','POLYGON',layer.crs().postgisSrid(), [], [])
-                    uf.loadTempLayer(intersection_layer)
-                # insert buffer polygons
-                geoms = []
-                values = []
-                for intersect in intersections:
-                    # each buffer has an id and a geometry
-                    geoms.append(intersect)
-                uf.insertTempFeatures(intersection_layer, geoms, values)
-                self.refreshCanvas(intersection_layer)
+            intersection = processing.runandload('qgis:intersection',layer,cutter,None)
+            intersection_layer = uf.getLegendLayerByName(self.iface, "Intersection")
+            # prepare results layer
+            save_path = QgsProject.instance().homePath()+"/dissolve_results.shp"
+            # dissolve grouping by origin id
+            dissolve = processing.runandload('qgis:dissolve',intersection_layer,False,'id',save_path)
+            dissolved_layer = uf.getLegendLayerByName(self.iface, "Dissolved")
+            # close intersections intermediary layer
+            QgsMapLayerRegistry.instance().removeMapLayers([intersection_layer.id()])
 
     # after adding features to layers needs a refresh (sometimes)
     def refreshCanvas(self, layer):

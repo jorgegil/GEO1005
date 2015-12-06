@@ -21,11 +21,8 @@
  ***************************************************************************/
 """
 from PyQt4 import QtGui, QtCore
-#from PyQt4.QtCore import *
-#from PyQt4.QtGui import *
 from qgis.core import *
 from qgis.networkanalysis import *
-
 
 from pyspatialite import dbapi2 as sqlite
 import psycopg2 as pgsql
@@ -391,7 +388,7 @@ def getFeaturesByIntersection(base_layer, intersect_layer, crosses):
     # does the opposite if crosses = False
     for feat in base:
         append = not crosses
-        base_geom = QgsGeometry(feat.geometry())
+        base_geom = feat.geometry()
         for intersect in intersect_geom:
             if base_geom.intersects(intersect):
                 append = crosses
@@ -399,21 +396,6 @@ def getFeaturesByIntersection(base_layer, intersect_layer, crosses):
         if append:
             features.append(feat)
     return features
-
-
-def getFeaturesIntersections(base_layer, intersect_layer):
-    intersections = []
-    # retrieve objects to be intersected (list comprehension, more pythonic)
-    obstacles_geom = [QgsGeometry(feat.geometry()) for feat in intersect_layer.getFeatures()]
-    # retrieve base layer objects
-    base = base_layer.getFeatures()
-    # loop through base features and intersecting elements
-    for feat in base:
-        base_geom = QgsGeometry(feat.geometry())
-        for obst in obstacles_geom:
-            if base_geom.intersects(obst):
-                intersections.append(base_geom.intersection(obst))
-    return intersections
 
 
 def selectFeaturesByIntersection(base_layer, intersect_layer, crosses):
@@ -433,6 +415,21 @@ def selectFeaturesByIntersection(base_layer, intersect_layer, crosses):
         if append:
             features.append(feat.id())
     base_layer.select(features)
+
+
+def getFeaturesIntersections(base_layer, intersect_layer):
+    intersections = []
+    # retrieve objects to be intersected (list comprehension, more pythonic)
+    obstacles_geom = [QgsGeometry(feat.geometry()) for feat in intersect_layer.getFeatures()]
+    # retrieve base layer objects
+    base = base_layer.getFeatures()
+    # loop through base features and intersecting elements
+    for feat in base:
+        base_geom = QgsGeometry(feat.geometry())
+        for obst in obstacles_geom:
+            if base_geom.intersects(obst):
+                intersections.append(base_geom.intersection(obst))
+    return intersections
 
 
 #
@@ -551,10 +548,8 @@ def calculateServiceArea(graph, tied_points, origin, cutoff, impedance=0):
 
             i = 0
             while i < len(cost):
-                if cost[i] > cutoff and tree[i] != -1:
-                    outVertexId = graph.arc(tree[i]).outVertex()
-                    if cost[outVertexId] < cutoff:
-                        points[str(i)]=((graph.vertex(i).point()),cost)
+                if cost[i] <= cutoff and tree[i] != -1:
+                    points[str(i)]=((graph.vertex(i).point()),cost)
                 i += 1
 
     return points
@@ -703,12 +698,23 @@ def insertTempFeatures(layer, geometry, attributes):
     geometry_type = provider.geometryType()
     for i, geom in enumerate(geometry):
         fet = QgsFeature()
-        if isinstance(geometry, list) and geometry_type == 1:
+        if geometry_type in (1, 4):
             fet.setGeometry(QgsGeometry.fromPoint(geom))
-        elif isinstance(geometry, list) and geometry_type == 2:
+        elif geometry_type in (2, 5):
             fet.setGeometry(QgsGeometry.fromPolyline(geom))
-        else:
-            fet.setGeometry(geom)
+        elif geometry_type in (3, 6):
+            fet.setGeometry(QgsGeometry.fromPolygon(geom))
+        if attributes:
+            fet.setAttributes(attributes[i])
+        provider.addFeatures([fet])
+    provider.updateExtents()
+
+
+def insertTempFeaturesGeom(layer, geometry, attributes):
+    provider = layer.dataProvider()
+    for i, geom in enumerate(geometry):
+        fet = QgsFeature()
+        fet.setGeometry(geom)
         if attributes:
             fet.setAttributes(attributes[i])
         provider.addFeatures([fet])
