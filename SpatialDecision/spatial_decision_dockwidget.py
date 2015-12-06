@@ -387,7 +387,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         layer.loadNamedStyle("%sobstacle_danger.qml" % path)
         layer.triggerRepaint()
         self.iface.legendInterface().refreshLayerSymbology(layer)
-        
+
         # load a simple style
         layer = uf.getLegendLayerByName(self.iface, "Buffers")
         layer.loadNamedStyle("%sbuffer.qml" % path)
@@ -451,9 +451,11 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 
     def extractAttributeSummary(self, attribute):
         # get summary of the attribute
-        summary = []
         layer = self.getSelectedLayer()
-
+        summary = []
+        # only use the first attribute in the list
+        for feature in layer.getFeatures():
+            summary.append((feature.id(), feature.attribute(attribute)))
         # send this to the table
         self.clearTable()
         self.updateTable(summary)
@@ -472,9 +474,11 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
     # table window functions
     def updateTable(self, values):
         # takes a list of label / value pairs, can be tuples or lists. not dictionaries to control order
+        self.statisticsTable.setColumnCount(2)
         self.statisticsTable.setHorizontalHeaderLabels(["Item","Value"])
         self.statisticsTable.setRowCount(len(values))
         for i, item in enumerate(values):
+            # i is the table row, items mus tbe added as QTableWidgetItems
             self.statisticsTable.setItem(i,0,QtGui.QTableWidgetItem(str(item[0])))
             self.statisticsTable.setItem(i,1,QtGui.QTableWidgetItem(str(item[1])))
         self.statisticsTable.horizontalHeader().setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
@@ -483,3 +487,6 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 
     def clearTable(self):
         self.statisticsTable.clear()
+
+    def saveTable(self):
+        pass
