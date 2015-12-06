@@ -228,6 +228,7 @@ def getFieldValues(layer, fieldname, null=True, selection=False):
 
 
 def addFields(layer, names, types):
+    # types can be QVariant.Int, QVariant.Double, QVariant.String
     res = False
     if layer:
         provider = layer.dataProvider()
@@ -244,6 +245,23 @@ def addFields(layer, names, types):
     return res
 
 
+def updateField(layer, name, expression):
+    res = False
+    if layer:
+        provider = layer.dataProvider()
+        caps = provider.capabilities()
+        if caps & QgsVectorDataProvider.AddAttributes:
+            #field = layer.fieldNameIndex(name)
+            calc = QgsExpression(expression)
+            layer.startEditing()
+            for feature in layer.getFeatures():
+                value = calc.evaluate(feature)
+                feature[name] = value
+                layer.updateFeature(feature)
+                #layer.changeAttributeValue(feature.id(), field, value)
+            layer.commitChanges()
+            res = True
+    return res
 #
 # Feature functions
 #

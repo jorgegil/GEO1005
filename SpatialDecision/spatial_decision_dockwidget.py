@@ -332,6 +332,11 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             # close intersections intermediary layer
             QgsMapLayerRegistry.instance().removeMapLayers([intersection_layer.id()])
 
+            # add an 'area' field and calculate
+            # functiona can add more than one filed, therefore names and types are lists
+            uf.addFields(dissolved_layer, ["area"], [QtCore.QVariant.Double])
+            uf.updateField(dissolved_layer, "area","$area")
+
     # after adding features to layers needs a refresh (sometimes)
     def refreshCanvas(self, layer):
         if self.canvas.isCachingEnabled():
