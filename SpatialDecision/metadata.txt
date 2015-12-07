@@ -30,7 +30,7 @@ tags=
 
 homepage=https://github.com/jorgegil/GEO1005
 category=Plugins
-icon=icons/sdss_icon.png
+icon=/plugins/SpatialDecision/icons/icon.png
 # experimental flag
 experimental=True
 

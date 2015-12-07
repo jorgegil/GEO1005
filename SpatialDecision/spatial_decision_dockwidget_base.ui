@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>342</width>
+    <width>362</width>
     <height>509</height>
    </rect>
   </property>
@@ -56,10 +56,6 @@
             <property name="text">
              <string/>
             </property>
-            <property name="icon">
-             <iconset>
-              <normaloff>icons/ambulance.png</normaloff>icons/ambulance.png</iconset>
-            </property>
             <property name="iconSize">
              <size>
               <width>64</width>
@@ -81,10 +77,6 @@
             </property>
             <property name="text">
              <string/>
-            </property>
-            <property name="icon">
-             <iconset>
-              <normaloff>icons/medic_box.png</normaloff>icons/medic_box.png</iconset>
             </property>
             <property name="iconSize">
              <size>
@@ -240,12 +232,52 @@
        <attribute name="title">
         <string>visualisation</string>
        </attribute>
+       <widget class="QWidget" name="layoutWidget">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>10</y>
+          <width>291</width>
+          <height>391</height>
+         </rect>
+        </property>
+        <layout class="QFormLayout" name="formLayout_2">
+         <item row="0" column="0">
+          <widget class="QPushButton" name="displayStyleButton">
+           <property name="text">
+            <string>Load Style</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QPushButton" name="displayRangeButton">
+           <property name="text">
+            <string>Apply Style</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Buffer and Obstacles layers</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>Apply style to selected layer</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
       </widget>
       <widget class="QWidget" name="visualisationTab">
        <attribute name="title">
         <string>reporting</string>
        </attribute>
-       <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
+       <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0,0,0">
         <item>
          <layout class="QGridLayout" name="gridLayout_2" rowstretch="0,1,1" rowminimumheight="0,1,1">
           <item row="0" column="0">
@@ -269,26 +301,47 @@
             </property>
            </widget>
           </item>
-          <item row="2" column="0">
-           <widget class="QPushButton" name="saveMapButton">
-            <property name="text">
-             <string>Save Map</string>
-            </property>
-           </widget>
-          </item>
           <item row="1" column="0" colspan="2">
            <widget class="QLineEdit" name="saveMapPathEdit"/>
           </item>
           <item row="0" column="1">
            <widget class="QLineEdit" name="featureCounterEdit"/>
           </item>
+          <item row="2" column="1">
+           <widget class="QPushButton" name="saveMapButton">
+            <property name="text">
+             <string>Save Map</string>
+            </property>
+           </widget>
+          </item>
          </layout>
+        </item>
+        <item>
+         <widget class="QLabel" name="reportLabel">
+          <property name="text">
+           <string>Layer Report:</string>
+          </property>
+         </widget>
         </item>
         <item>
          <widget class="QListWidget" name="reportList"/>
         </item>
         <item>
+         <widget class="QLabel" name="statisticsLabel">
+          <property name="text">
+           <string>Attribute Summary:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QTableWidget" name="statisticsTable"/>
+        </item>
+        <item>
+         <widget class="QPushButton" name="saveStatisticsButton">
+          <property name="text">
+           <string>Save Summary</string>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>
