@@ -31,6 +31,7 @@ import resources
 import os
 import os.path
 import random
+import csv
 
 from . import utility_functions as uf
 
@@ -93,6 +94,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.saveMapButton.clicked.connect(self.saveMap)
         self.saveMapPathButton.clicked.connect(self.selectFile)
         self.updateAttribute.connect(self.extractAttributeSummary)
+        self.saveStatisticsButton.clicked.connect(self.saveTable)
 
         # set current UI restrictions
 
@@ -489,4 +491,25 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.statisticsTable.clear()
 
     def saveTable(self):
-        pass
+        path = QtGui.QFileDialog.getSaveFileName(self, 'Save File', '', 'CSV(*.csv)')
+        if path:
+            with open(unicode(path), 'wb') as stream:
+                # open csv file for writing
+                writer = csv.writer(stream)
+                # write header
+                header = []
+                for column in range(self.statisticsTable.columnCount()):
+                    item = self.statisticsTable.horizontalHeaderItem(column)
+                    header.append(unicode(item.text()).encode('utf8'))
+                writer.writerow(header)
+                # write data
+                for row in range(self.statisticsTable.rowCount()):
+                    rowdata = []
+                    for column in range(self.statisticsTable.columnCount()):
+                        item = self.statisticsTable.item(row, column)
+                        if item is not None:
+                            rowdata.append(
+                                unicode(item.text()).encode('utf8'))
+                        else:
+                            rowdata.append('')
+                    writer.writerow(rowdata)
