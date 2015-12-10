@@ -25,6 +25,10 @@ from PyQt4 import QtGui, QtCore, uic
 from qgis.core import *
 from qgis.networkanalysis import *
 import processing
+
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+
 # Initialize Qt resources from file resources.py
 import resources
 
@@ -88,6 +92,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         # visualisation
         self.displayStyleButton.clicked.connect(self.displayBenchmarkStyle)
         self.displayRangeButton.clicked.connect(self.displayContinuousStyle)
+        self.updateAttribute.connect(self.plotChart)
 
         # reporting
         self.featureCounterUpdateButton.clicked.connect(self.updateNumberFeatures)
@@ -98,11 +103,19 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 
         # set current UI restrictions
 
-
         # add button icons
         self.medicButton.setIcon(QtGui.QIcon(':icons/medic_box.png'))
         self.ambulanceButton.setIcon(QtGui.QIcon(':icons/ambulance.png'))
 
+        # add matplotlib Figure to chartFrame
+        self.chart_figure = Figure()
+        self.chart_subplot_hist = self.chart_figure.add_subplot(221)
+        self.chart_subplot_line = self.chart_figure.add_subplot(222)
+        self.chart_subplot_bar = self.chart_figure.add_subplot(223)
+        self.chart_subplot_pie = self.chart_figure.add_subplot(224)
+        self.chart_figure.tight_layout()
+        self.chart_canvas = FigureCanvas(self.chart_figure)
+        self.chartLayout.addWidget(self.chart_canvas)
 
         # initialisation
         self.updateLayers()
@@ -153,6 +166,8 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             self.setSelectedLayer()
         else:
             self.selectAttributeCombo.clear()
+            self.clearChart()
+
 
     def setSelectedLayer(self):
         layer_name = self.selectLayerCombo.currentText()
@@ -167,11 +182,15 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
     def updateAttributes(self, layer):
         self.selectAttributeCombo.clear()
         if layer:
-            fields = uf.getFieldNames(layer)
-            self.selectAttributeCombo.addItems(fields)
-            # send list to the report list window
             self.clearReport()
-            self.updateReport(fields)
+            self.clearChart()
+            fields = uf.getFieldNames(layer)
+            if fields:
+                self.selectAttributeCombo.addItems(fields)
+                self.setSelectedAttribute()
+                # send list to the report list window
+                self.updateReport(fields)
+
 
     def setSelectedAttribute(self):
         field_name = self.selectAttributeCombo.currentText()
@@ -425,6 +444,60 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             layer.triggerRepaint()
             self.iface.legendInterface().refreshLayerSymbology(layer)
             self.canvas.refresh()
+
+    def plotChart(self):
+        plot_layer = self.getSelectedLayer()
+        if plot_layer:
+            attribute = self.getSelectedAttribute()
+            if attribute:
+                numeric_fields = uf.getNumericFieldNames(plot_layer)
+
+                # draw a histogram from numeric values
+                if attribute in numeric_fields:
+                    values = uf.getAllFeatureValues(plot_layer, attribute)
+                    n, bins, patches = self.chart_subplot_hist.hist(values, 50, normed=False)
+                else:
+                    self.chart_subplot_hist.cla()
+
+                # draw a simple line plot
+                self.chart_subplot_line.cla()
+                x1 = range(20)
+                y1 = random.sample(range(1, 100), 20)
+                self.chart_subplot_line.plot(x1 , y1 , 'r.-')
+
+                # draw a simple bar plot
+                labels = ('Critical', 'Risk', 'Safe')
+                self.chart_subplot_bar.cla()
+                self.chart_subplot_bar.bar(1.2, y1[0], width=0.7, alpha=1, color='red', label=labels[0])
+                self.chart_subplot_bar.bar(2.2, y1[5], width=0.7, alpha=1, color='yellow', label=labels[1])
+                self.chart_subplot_bar.bar(3.2, y1[10], width=0.7, alpha=1, color='green', label=labels[2])
+                self.chart_subplot_bar.set_xticks((1.5,2.5,3.5))
+                self.chart_subplot_bar.set_xticklabels(labels)
+
+                # draw a simple pie chart
+                self.chart_subplot_pie.cla()
+                total = float(y1[0]+y1[5]+y1[10])
+                sizes = [
+                    (y1[0]/total)*100.0,
+                    (y1[5]/total)*100.0,
+                    (y1[10]/total)*100.0,
+                ]
+                colours = ('lightcoral', 'gold', 'yellowgreen')
+                self.chart_subplot_pie.pie(sizes, labels=labels, colors=colours, autopct='%1.1f%%', shadow=True, startangle=90)
+                self.chart_subplot_pie.axis('equal')
+
+                # draw all the plots
+                self.chart_canvas.draw()
+            else:
+                self.clearChart()
+
+    def clearChart(self):
+        self.chart_subplot_hist.cla()
+        self.chart_subplot_line.cla()
+        self.chart_subplot_bar.cla()
+        self.chart_subplot_pie.cla()
+        self.chart_canvas.draw()
+
 
 #######
 #    Reporting functions

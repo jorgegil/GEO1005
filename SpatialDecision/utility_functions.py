@@ -157,10 +157,10 @@ def fieldExists(layer, name):
 
 
 def getFieldNames(layer):
-    fields_list = []
+    field_names = []
     if layer and layer.dataProvider():
-        fields_list = [field.name() for field in layer.dataProvider().fields()]
-    return fields_list
+        field_names = [field.name() for field in layer.dataProvider().fields()]
+    return field_names
 
 
 def getNumericFields(layer, type='all'):
@@ -175,6 +175,20 @@ def getNumericFields(layer, type='all'):
             if field.type() in types:
                 fields.append(field)
     return fields
+
+
+def getNumericFieldNames(layer, type='all'):
+    field_names = []
+    if type == 'all':
+        types = (QtCore.QVariant.Int, QtCore.QVariant.LongLong, QtCore.QVariant.Double,
+                 QtCore.QVariant.UInt, QtCore.QVariant.ULongLong)
+    else:
+        types = (type)
+    if layer and layer.dataProvider():
+        for field in layer.dataProvider().fields():
+            if field.type() in types:
+                field_names.append(field.name())
+    return field_names
 
 
 def getFieldIndex(layer, name):
@@ -361,6 +375,14 @@ def getAllFeatureIds(layer):
         features = layer.getFeatures()
         ids = [feature.id() for feature in features]
     return ids
+
+
+def getAllFeatureValues(layer, name):
+    values = []
+    if layer:
+        features = layer.getFeatures()
+        values = [feature.attribute(name) for feature in features]
+    return values
 
 
 def getAllFeatureSymbols(layer):
