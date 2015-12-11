@@ -41,7 +41,7 @@ except ImportError, e:
     if cmd_subfolder not in sys.path:
         sys.path.insert(0, cmd_subfolder)
 
-is_debug = True
+is_debug = False
 try:
     import pydevd
     has_pydevd = True
