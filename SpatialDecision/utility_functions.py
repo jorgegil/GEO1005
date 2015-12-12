@@ -796,7 +796,7 @@ def createTempLayerFull(name, srid, attributes, types, values, coords):
     vlayer.commitChanges()
     vlayer.updateExtents()
     if not vlayer.isValid():
-        print "Layer failed to load!"
+        print "Layer failed to create!"
         return None
     return vlayer
 
