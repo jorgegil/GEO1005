@@ -254,6 +254,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
                 types = [QtCore.QVariant.String]
                 routes_layer = uf.createTempLayer('Routes','LINESTRING',self.network_layer.crs().postgisSrid(), attribs, types)
                 uf.loadTempLayer(routes_layer)
+                routes_layer.setLayerName('Routes')
             # insert route line
             uf.insertTempFeatures(routes_layer, [path], [['testing',100.00]])
             self.refreshCanvas(routes_layer)
@@ -291,6 +292,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
                 types = [QtCore.QVariant.Double]
                 area_layer = uf.createTempLayer('Service_Area','POINT',self.network_layer.crs().postgisSrid(), attribs, types)
                 uf.loadTempLayer(area_layer)
+                area_layer.setLayerName('Service_Area')
             # insert service area points
             geoms = []
             values = []
@@ -327,6 +329,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
                 types = [QtCore.QVariant.String, QtCore.QVariant.Double]
                 buffer_layer = uf.createTempLayer('Buffers','POLYGON',layer.crs().postgisSrid(), attribs, types)
                 uf.loadTempLayer(buffer_layer)
+                buffer_layer.setLayerName('Buffers')
             # insert buffer polygons
             geoms = []
             values = []
@@ -352,6 +355,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             # dissolve grouping by origin id
             dissolve = processing.runandload('qgis:dissolve',intersection_layer,False,'id',save_path)
             dissolved_layer = uf.getLegendLayerByName(self.iface, "Dissolved")
+            dissolved_layer.setLayerName('Buffer Intersection')
             # close intersections intermediary layer
             QgsMapLayerRegistry.instance().removeMapLayers([intersection_layer.id()])
 
