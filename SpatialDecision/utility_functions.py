@@ -698,44 +698,6 @@ def createIndex(layer):
         return None
 
 
-#------------------------------
-# General database functions
-#------------------------------
-def getDBLayerConnection(layer):
-    provider = layer.providerType()
-    uri = QgsDataSourceURI(layer.dataProvider().dataSourceUri())
-    if provider == 'spatialite':
-        path = uri.database()
-        connection_object = getSpatialiteConnection(path)
-    elif provider == 'postgres':
-        connection_object = pgsql.connect(uri.connectionInfo().encode('utf-8'))
-    else:
-        connection_object = None
-    return connection_object
-
-
-def getSpatialiteConnection(path):
-    try:
-        connection=sqlite.connect(path)
-    except sqlite.OperationalError, error:
-        #pop_up_error("Unable to connect to selected database: \n %s" % error)
-        connection = None
-    return connection
-
-
-def getDBLayerTableName(layer):
-    uri = QgsDataSourceURI(layer.dataProvider().dataSourceUri())
-    return uri.table()
-
-
-def getDBLayerGeometryColumn(layer):
-    uri = QgsDataSourceURI(layer.dataProvider().dataSourceUri())
-    return uri.geometryColumn()
-
-
-def getDBLayerPrimaryKey(layer):
-    uri = QgsDataSourceURI(layer.dataProvider().dataSourceUri())
-    return uri.key()
 
 
 #------------------------------
