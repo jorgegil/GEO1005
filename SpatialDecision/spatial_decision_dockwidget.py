@@ -24,6 +24,7 @@
 from PyQt4 import QtGui, QtCore, uic
 from qgis.core import *
 from qgis.networkanalysis import *
+from qgis.gui import *
 import processing
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
@@ -101,11 +102,20 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.updateAttribute.connect(self.extractAttributeSummary)
         self.saveStatisticsButton.clicked.connect(self.saveTable)
 
+        self.emitPoint = QgsMapToolEmitPoint(self.canvas)
+        self.featureCounterUpdateButton.clicked.connect(self.enterPoi)
+        self.emitPoint.canvasClicked.connect(self.getPoint)
+
         # set current UI restrictions
 
         # add button icons
         self.medicButton.setIcon(QtGui.QIcon(':icons/medic_box.png'))
         self.ambulanceButton.setIcon(QtGui.QIcon(':icons/ambulance.png'))
+        self.logoLabel.setPixmap(QtGui.QPixmap(':icons/ambulance.png'))
+
+        movie = QtGui.QMovie(':icons/loading2.gif')
+        self.logoLabel.setMovie(movie)
+        movie.start()
 
         # add matplotlib Figure to chartFrame
         self.chart_figure = Figure()
@@ -135,12 +145,29 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.closingPlugin.emit()
         event.accept()
 
+    def enterPoi(self):
+        # remember currently selected tool
+        self.userTool = self.canvas.mapTool()
+        # activate coordinate capture tool
+        self.canvas.setMapTool(self.emitPoint)
+
+    def getPoint(self, mapPoint, mouseButton):
+        # change tool so you don't get more than one POI
+        self.canvas.unsetMapTool(self.emitPoint)
+        self.canvas.setMapTool(self.userTool)
+        #Get the click
+        if mapPoint:
+            print(mapPoint)
+            # here do something with the point
+
+
+
 #######
 #   Data functions
 #######
     def openScenario(self,filename=""):
         scenario_open = False
-        scenario_file = os.path.join('/Users/jorge/github/GEO1005','sample_data','time_test.qgs')
+        scenario_file = os.path.join(u'/Users/jorge/github/GEO1005','sample_data','time_test.qgs')
         # check if file exists
         if os.path.isfile(scenario_file):
             self.iface.addProject(scenario_file)
@@ -149,7 +176,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             last_dir = uf.getLastDir("SDSS")
             new_file = QtGui.QFileDialog.getOpenFileName(self, "", last_dir, "(*.qgs)")
             if new_file:
-                self.iface.addProject(new_file)
+                self.iface.addProject(unicode(new_file))
                 scenario_open = True
         if scenario_open:
             self.updateLayers()
@@ -254,10 +281,12 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
                 types = [QtCore.QVariant.String]
                 routes_layer = uf.createTempLayer('Routes','LINESTRING',self.network_layer.crs().postgisSrid(), attribs, types)
                 uf.loadTempLayer(routes_layer)
-                routes_layer.setLayerName('Routes')
             # insert route line
+            for route in routes_layer.getFeatures():
+                print route.id()
             uf.insertTempFeatures(routes_layer, [path], [['testing',100.00]])
-            self.refreshCanvas(routes_layer)
+            buffer = processing.runandload('qgis:fixeddistancebuffer',routes_layer,10.0,5,False,None)
+            #self.refreshCanvas(routes_layer)
 
     def deleteRoutes(self):
         routes_layer = uf.getLegendLayerByName(self.iface, "Routes")

@@ -3,5 +3,7 @@
     <file>icons/ambulance.png</file>
     <file>icons/icon.png</file>
     <file>icons/medic_box.png</file>
+    <file>icons/loading.gif</file>
+    <file>icons/loading2.gif</file>
   </qresource>
 </RCC>

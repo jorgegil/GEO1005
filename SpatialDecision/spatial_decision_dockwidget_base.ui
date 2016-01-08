@@ -48,7 +48,7 @@
      <attribute name="title">
       <string>data</string>
      </attribute>
-     <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0,0">
+     <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0,0,0">
       <item>
        <layout class="QFormLayout" name="formLayout">
         <item row="0" column="0">
@@ -130,6 +130,13 @@
        </layout>
       </item>
       <item>
+       <widget class="QLabel" name="logoLabel">
+        <property name="text">
+         <string>TextLabel</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <spacer name="verticalSpacer">
         <property name="orientation">
          <enum>Qt::Vertical</enum>
@@ -149,10 +156,37 @@
       <string>analysis</string>
      </attribute>
      <layout class="QFormLayout" name="formLayout_4">
+      <property name="fieldGrowthPolicy">
+       <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+      </property>
       <item row="1" column="0">
        <widget class="QPushButton" name="setNetworkButton">
         <property name="text">
          <string>Build Network</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLabel" name="networkLabel">
+        <property name="text">
+         <string>Uses selected objects for origins / destinations</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QPushButton" name="shortestRouteButton">
+        <property name="text">
+         <string>Shortest Route</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QPushButton" name="clearRouteButton">
+        <property name="text">
+         <string>Clear Routes</string>
         </property>
        </widget>
       </item>
@@ -170,23 +204,6 @@
         </property>
        </widget>
       </item>
-      <item row="2" column="0">
-       <widget class="QPushButton" name="shortestRouteButton">
-        <property name="text">
-         <string>Shortest Route</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QLabel" name="networkLabel">
-        <property name="text">
-         <string>Uses selected objects for origins / destinations</string>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
       <item row="4" column="0">
        <widget class="QPushButton" name="bufferButton">
         <property name="text">
@@ -198,6 +215,13 @@
        <widget class="QLineEdit" name="bufferCutoffEdit">
         <property name="text">
          <string>800</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QPushButton" name="makeIntersectionButton">
+        <property name="text">
+         <string>Intersection</string>
         </property>
        </widget>
       </item>
@@ -215,13 +239,6 @@
         </property>
        </widget>
       </item>
-      <item row="8" column="0">
-       <widget class="QPushButton" name="expressionSelectButton">
-        <property name="text">
-         <string>Select</string>
-        </property>
-       </widget>
-      </item>
       <item row="7" column="0" colspan="2">
        <widget class="QLineEdit" name="expressionEdit">
         <property name="text">
@@ -229,24 +246,17 @@
         </property>
        </widget>
       </item>
+      <item row="8" column="0">
+       <widget class="QPushButton" name="expressionSelectButton">
+        <property name="text">
+         <string>Select</string>
+        </property>
+       </widget>
+      </item>
       <item row="8" column="1">
        <widget class="QPushButton" name="expressionFilterButton">
         <property name="text">
          <string>Filter</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QPushButton" name="clearRouteButton">
-        <property name="text">
-         <string>Clear Routes</string>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="0">
-       <widget class="QPushButton" name="makeIntersectionButton">
-        <property name="text">
-         <string>Intersection</string>
         </property>
        </widget>
       </item>

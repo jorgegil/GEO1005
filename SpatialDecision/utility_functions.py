@@ -276,6 +276,8 @@ def updateField(layer, name, expression):
             layer.commitChanges()
             res = True
     return res
+
+
 #
 # Feature functions
 #

@@ -30,7 +30,7 @@ tags= GEO1005, vector, SDSS
 
 homepage=https://github.com/jorgegil/GEO1005
 category=Plugins
-icon=/plugins/SpatialDecision/icons/icon.png
+icon=icon.png
 # experimental flag
 experimental=True
 
