@@ -35,7 +35,19 @@ try:
     import xlrd
 except ImportError, e:
     from .external import xlrd as xl
-    print('local imported')
+
+#change sys path to networkx package if not installed
+import sys
+import inspect
+try:
+    import networkx as nx
+except ImportError, e:
+    cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile(inspect.currentframe()))[0],"external")))
+    if cmd_subfolder not in sys.path:
+        sys.path.insert(0, cmd_subfolder)
+    # now can import complex package placed in the external folder
+    # import networkx as nx
+
 
 is_debug = False
 try:

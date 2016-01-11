@@ -27,6 +27,7 @@ from qgis.networkanalysis import *
 from qgis.gui import *
 import processing
 
+# matplotlib for the charts
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
@@ -144,23 +145,6 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 
         self.closingPlugin.emit()
         event.accept()
-
-    def enterPoi(self):
-        # remember currently selected tool
-        self.userTool = self.canvas.mapTool()
-        # activate coordinate capture tool
-        self.canvas.setMapTool(self.emitPoint)
-
-    def getPoint(self, mapPoint, mouseButton):
-        # change tool so you don't get more than one POI
-        self.canvas.unsetMapTool(self.emitPoint)
-        self.canvas.setMapTool(self.userTool)
-        #Get the click
-        if mapPoint:
-            print(mapPoint)
-            # here do something with the point
-
-
 
 #######
 #   Data functions
@@ -541,6 +525,22 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         if layer:
             count = layer.featureCount()
             self.featureCounterEdit.setText(str(count))
+
+    # get the point when the user clicks on the canvas
+    def enterPoi(self):
+        # remember currently selected tool
+        self.userTool = self.canvas.mapTool()
+        # activate coordinate capture tool
+        self.canvas.setMapTool(self.emitPoint)
+
+    def getPoint(self, mapPoint, mouseButton):
+        # change tool so you don't get more than one POI
+        self.canvas.unsetMapTool(self.emitPoint)
+        self.canvas.setMapTool(self.userTool)
+        #Get the click
+        if mapPoint:
+            print(mapPoint)
+            # here do something with the point
 
     # selecting a file for saving
     def selectFile(self):
