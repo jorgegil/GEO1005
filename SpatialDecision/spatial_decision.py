@@ -36,19 +36,7 @@ try:
 except ImportError, e:
     from .external import xlrd as xl
 
-#change sys path to networkx package if not installed
-import sys
-import inspect
-try:
-    import networkx as nx
-except ImportError, e:
-    cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile(inspect.currentframe()))[0],"external")))
-    if cmd_subfolder not in sys.path:
-        sys.path.insert(0, cmd_subfolder)
-    # now can import complex package placed in the external folder
-    # import networkx as nx
-
-
+# setup for remote debugging. Pycharm professional, only
 is_debug = False
 try:
     import pydevd
@@ -56,6 +44,9 @@ try:
 except ImportError, e:
     has_pydevd = False
     is_debug = False
+
+if has_pydevd and is_debug:
+    pydevd.settrace('localhost', port=53100, stdoutToServer=True, stderrToServer=True, suspend=False)
 
 class SpatialDecision:
     """QGIS Plugin Implementation."""
@@ -99,10 +90,6 @@ class SpatialDecision:
 
         self.pluginIsActive = False
         self.dockwidget = None
-
-        if has_pydevd and is_debug:
-            pydevd.settrace('localhost', port=53100, stdoutToServer=True, stderrToServer=True)
-
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):

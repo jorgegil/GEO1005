@@ -634,7 +634,7 @@ def calculateServiceArea(graph, tied_points, origin, cutoff, impedance=0):
 def getLastDir(tool_name=''):
     path = ''
     settings = QtCore.QSettings(tool_name,"")
-    settings.value("lastUsedDir",str(""))
+    path = settings.value("lastUsedDir",str(""))
     return path
 
 
@@ -788,7 +788,7 @@ def createTempLayerFull(name, srid, attributes, types, values, coords):
             pass
         # add attribute values
         feat.setAttributes(list(val))
-        features.append(feat)
+        features.append(feat);
     # add the features to the layer
     try:
         provider.addFeatures(features)
