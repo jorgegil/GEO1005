@@ -38,6 +38,7 @@ import os
 import os.path
 import random
 import csv
+import time
 
 from . import utility_functions as uf
 
@@ -76,6 +77,8 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.saveScenarioButton.clicked.connect(self.saveScenario)
         self.selectLayerCombo.activated.connect(self.setSelectedLayer)
         self.selectAttributeCombo.activated.connect(self.setSelectedAttribute)
+        self.startCounterButton.clicked.connect(self.startCounter)
+        self.cancelCounterButton.clicked.connect(self.cancelCounter)
 
         # analysis
         self.graph = QgsGraph()
@@ -107,7 +110,8 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.featureCounterUpdateButton.clicked.connect(self.enterPoi)
         self.emitPoint.canvasClicked.connect(self.getPoint)
 
-        # set current UI restrictions
+        # set current UI values
+        self.counterProgressBar.setValue(0)
 
         # add button icons
         self.medicButton.setIcon(QtGui.QIcon(':icons/medic_box.png'))
@@ -210,6 +214,54 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
     def getSelectedAttribute(self):
         field_name = self.selectAttributeCombo.currentText()
         return field_name
+
+
+    def startCounter(self):
+        # prepare the thread of the timed even or long loop
+        self.timerThread = TimedEvent(self.iface.mainWindow(),self,'default')
+        self.timerThread.timerFinished.connect(self.concludeCounter)
+        self.timerThread.timerProgress.connect(self.updateCounter)
+        self.timerThread.timerError.connect(self.cancelCounter)
+        self.timerThread.start()
+        # from here the timer is running in the background on a separate thread. user can continue working on QGIS.
+        self.counterProgressBar.setValue(0)
+        self.startCounterButton.setDisabled(True)
+        self.cancelCounterButton.setDisabled(False)
+
+    def cancelCounter(self):
+        # triggered if the user clicks the cancel button
+        self.timerThread.stop()
+        self.counterProgressBar.setValue(0)
+        self.counterProgressBar.setRange(0, 100)
+        try:
+            self.timerThread.timerFinished.disconnect(self.concludeCounter)
+            self.timerThread.timerProgress.disconnect(self.updateCounter)
+            self.timerThread.timerError.disconnect(self.cancelCounter)
+        except:
+            pass
+        self.timerThread = None
+        self.startCounterButton.setDisabled(False)
+        self.cancelCounterButton.setDisabled(True)
+
+    def updateCounter(self, value):
+        self.counterProgressBar.setValue(value)
+
+    def concludeCounter(self, result):
+        # clean up timer thread stuff
+        self.timerThread.stop()
+        self.counterProgressBar.setValue(100)
+        try:
+            self.timerThread.timerFinished.disconnect(self.concludeCounter)
+            self.timerThread.timerProgress.disconnect(self.updateCounter)
+            self.timerThread.timerError.disconnect(self.cancelCounter)
+        except:
+            pass
+        self.timerThread = None
+        self.startCounterButton.setDisabled(False)
+        self.cancelCounterButton.setDisabled(True)
+        # do something with the results
+        self.iface.messageBar().pushMessage("Infor", "The counter results: %s" % result, level=0, duration=5)
+
 
 #######
 #    Analysis functions
@@ -412,6 +464,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         uf.filterFeaturesByExpression(layer, self.expressionEdit.text())
 
 
+
 #######
 #    Visualisation functions
 #######
@@ -514,6 +567,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.chart_subplot_bar.cla()
         self.chart_subplot_pie.cla()
         self.chart_canvas.draw()
+
 
 
 #######
@@ -619,3 +673,38 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
                         else:
                             rowdata.append('')
                     writer.writerow(rowdata)
+
+
+
+class TimedEvent(QtCore.QThread):
+    timerFinished = QtCore.pyqtSignal(list)
+    timerProgress = QtCore.pyqtSignal(int)
+    timerError = QtCore.pyqtSignal()
+
+    def __init__(self, parentThread, parentObject, settings):
+        QtCore.QThread.__init__(self, parentThread)
+        self.parent = parentObject
+        self.input_settings = settings
+        self.running = False
+
+    def run(self):
+        # set the process running
+        self.running = True
+        #
+        progress = 0
+        recorded = []
+        while progress < 100:
+            jump = random.randint(5,10)
+            recorded.append(jump)
+            # wait for the number of seconds/5 (just to speed it up)
+            time.sleep(jump/5.0)
+            progress += jump
+            self.timerProgress.emit(progress)
+            # if it has been cancelled, stop the process
+            if not self.running:
+                return
+        self.timerFinished.emit(recorded)
+
+    def stop(self):
+        self.running = False
+        self.exit()

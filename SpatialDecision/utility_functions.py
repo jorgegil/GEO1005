@@ -30,12 +30,6 @@ import numpy as np
 import math
 import os.path
 
-try:
-    import networkx as nx
-    has_networkx = True
-except ImportError, e:
-    has_networkx = False
-
 
 #
 # Layer functions
