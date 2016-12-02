@@ -640,9 +640,9 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.statisticsTable.setHorizontalHeaderLabels(["Item","Value"])
         self.statisticsTable.setRowCount(len(values))
         for i, item in enumerate(values):
-            # i is the table row, items mus tbe added as QTableWidgetItems
-            self.statisticsTable.setItem(i,0,QtGui.QTableWidgetItem(str(item[0])))
-            self.statisticsTable.setItem(i,1,QtGui.QTableWidgetItem(str(item[1])))
+            # i is the table row, items must tbe added as QTableWidgetItems
+            self.statisticsTable.setItem(i,0,QtGui.QTableWidgetItem(unicode(item[0])))
+            self.statisticsTable.setItem(i,1,QtGui.QTableWidgetItem(unicode(item[1])))
         self.statisticsTable.horizontalHeader().setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
         self.statisticsTable.horizontalHeader().setResizeMode(1, QtGui.QHeaderView.Stretch)
         self.statisticsTable.resizeRowsToContents()

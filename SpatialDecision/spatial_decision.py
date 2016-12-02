@@ -37,7 +37,7 @@ except ImportError, e:
     from .external import xlrd as xl
 
 # setup for remote debugging. Pycharm professional, only
-is_debug = True
+is_debug = False
 try:
     import pydevd
     has_pydevd = True
