@@ -94,6 +94,8 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.expressionSelectButton.clicked.connect(self.selectFeaturesExpression)
         self.expressionFilterButton.clicked.connect(self.filterFeaturesExpression)
 
+        self.startCounterButton.hide()
+
         # visualisation
         self.displayStyleButton.clicked.connect(self.displayBenchmarkStyle)
         self.displayRangeButton.clicked.connect(self.displayContinuousStyle)
